@@ -2,7 +2,7 @@
 #
 # jmeter-ecs Orchestrator, aka 'Lucy'
 
-# Leverages teh AWS ECS CLI API:
+# Leverages the AWS ECS CLI tool:
 # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_AWSCLI.html
 
 # check for all required variables
@@ -62,9 +62,10 @@ if [ "$GRU_TAGS" == '' ]; then
 fi
 
 # derive IMAGE_ID from AWS_DEFAULT_REGION
+# see: http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI_launch_latest.html
 case "$AWS_DEFAULT_REGION" in
     us-east-1)
-        IMAGE_ID=ami-62d35c02 ;;
+        IMAGE_ID=ami-275ffe31 ;;
     us-east-2)
         IMAGE_ID=ami-62745007 ;;
     us-west-1)
@@ -92,14 +93,14 @@ esac
 
 echo "Using image $IMAGE_ID for $AWS_DEFAULT_REGION"
 
-# Step 1 - Create a cluster
+# Step 1 - Create an ECS Cluster
 echo "Creating cluster/$CLUSTER_NAME"
 aws ecs create-cluster --cluster-name $CLUSTER_NAME --query 'cluster.[clusterArn]' --output text
 
 # replace our Cluster name in the script we pass to --user-data
 sed -i 's/CLUSTER_NAME/'"$CLUSTER_NAME"'/' /opt/jmeter/cluster.sh
 
-# Step 2 - Create all instances
+# Step 2 - Create all instances and register them with the Cluster
 echo "Creating $MINION_COUNT Minion instances and register them to cluster/$CLUSTER_NAME"
 MINION_INSTANCE_IDS=$(aws ec2 run-instances --image-id $IMAGE_ID --count $MINION_COUNT --instance-type $INSTANCE_TYPE \
     --iam-instance-profile Name="ecsInstanceRole" --key-name $KEY_NAME \
@@ -136,12 +137,12 @@ if [ "$GRU_INSTANCE_ID" == '' ]; then
 fi
 echo "Gru instance started: $GRU_INSTANCE_ID"
 
-# Step 3 - Create our tasks
+# Step 3 - Create the Minion ECS task
 echo "Register Minion task definition"
 MINION_TASK_ARN=$(aws ecs register-task-definition --cli-input-json file:///opt/jmeter/minion.json --query 'taskDefinition.taskDefinitionArn' --output text | tr -d '\n')
 echo "Minion task registered: $MINION_TASK_ARN"
 
-# Step 4 - Wait until our instances are running and registered with cluster/$CLUSTER_NAME
+# Step 4 - Wait until the instances are running and registered with the Cluster
 echo "Waiting for instances to run..."
 aws ec2 wait instance-running --instance-ids $MINION_INSTANCE_IDS $GRU_INSTANCE_ID --output text
 echo "All instances running - return code $?"
@@ -174,7 +175,7 @@ else
   echo "Minion tasks failed to run - return code $?"
 fi
 
-# Step 7 - Get all the public IP addresses
+# Step 7 - Get public IP addresses from Gru and Minions
 GRU_HOST=$(aws ec2 describe-instances --instance-ids $GRU_INSTANCE_ID \
       --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text | tr -d '\n')
 echo "Gru at $GRU_HOST"
@@ -186,7 +187,7 @@ echo "Minions at at $MINION_HOSTS"
 # uncomment if you want to pause Lucy to inspect Gru or a Minion
 #read -p "Press enter to start Gru setup: "
 
-# Step 8 - Run our Docker Gru node with the specified JMX
+# Step 8 - Run Gru with the specified JMX
 echo "Copying $INPUT_JMX to Gru"
 scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $INPUT_JMX ec2-user@${GRU_HOST}:/tmp
 
@@ -206,7 +207,7 @@ aws ecs list-tasks --cluster $CLUSTER_NAME --output text |
     aws ecs stop-task --cluster $CLUSTER_NAME --task $line --query 'task.[taskArn]' --output text;
   done
 
-# Step 9 - Terminate all instances
+# Step 10 - Terminate all instances
 echo "Terminating instances: $MINION_INSTANCE_IDS $GRU_INSTANCE_ID"
 aws ec2 terminate-instances --instance-ids $MINION_INSTANCE_IDS $GRU_INSTANCE_ID \
   --query 'TerminatingInstances[*].[InstanceId]' --output text
@@ -214,7 +215,7 @@ aws ec2 terminate-instances --instance-ids $MINION_INSTANCE_IDS $GRU_INSTANCE_ID
 echo "Waiting for instances to terminate..."
 aws ec2 wait instance-terminated --instance-ids $MINION_INSTANCE_IDS $GRU_INSTANCE_ID --output text
 
-# Step 10 - Final cleanup
+# Step 11 - Final cleanup
 echo "Deregister task $MINION_TASK_ARN"
 aws ecs deregister-task-definition --task-definition $MINION_TASK_ARN --output text
 

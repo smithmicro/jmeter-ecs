@@ -12,10 +12,10 @@ The Docker image can be run as-is with a number of required environement variabl
 Prerequisites to use this image:
 * Create a VPC with at least one subnet as ECS requires the use of VPC **
 * Create a VPC security group that allows ports 22, 1099, 50000 and 51000 (tcp) to the VPC **
-* Create a security key pair and place in a directly like `~/.ssh`
+* Create a security key pair and place in the `keys` subdirectory
 * Have your AWS CLI Access Key ID/Secret Access Key handy
 * Replace or edit the included `plans/demo.jmx` to run your specific tests
-* Have an Role called `ecsInstanceRole` created as per:
+* A Role named `ecsInstanceRole` created as per:
   * http://docs.aws.amazon.com/AmazonECS/latest/developerguide/instance_IAM_role.html
 
 ** If you do not have a VPC created, you can use the included `aws-setup.sh` script to create the VPC, Subnet and required Security Group.
@@ -33,7 +33,7 @@ docker run -v <oath to jmx>:/plans -v <path to pem>:/keys -v <path to logs>:/log
     --enc INSTANCE_TYPE=<valid ECS instance type> \
     smithmicro/jmeter-ecs /plans/demo.jmx
 ```
-For 5 test instances in N. Virginia, docker run would look like this, assuming your `jmeter-key.pem` file is located in the `keys` subdirector:
+For 5 test instances in N. Virginia, `docker run` would look like this, assuming your `jmeter-key.pem` file is located in the `keys` subdirectory:
 ```
 docker run -v $PWD/plans:/plans -v $PWD/keys:/keys -v $PWD/logs:/logs \
     --env AWS_ACCESS_KEY_ID=ABCDEFGHIJKLMNOPQRST \
@@ -48,22 +48,22 @@ docker run -v $PWD/plans:/plans -v $PWD/keys:/keys -v $PWD/logs:/logs \
 ```
 
 ## Architecture
-This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Minion* and *Lucy*.  *Gru* manages the *Minions*, but *Lucy* orchestrates the entire process.
+This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Minion* and *Lucy*.  *Gru* manages the *Minions* from within EC2, but *Lucy* orchestrates the entire process.
 
 *Lucy* runs the `lucy.sh` script to perform the following steps:
 * Step 1 - Create an ECS Cluster
 * Step 2 - Create all instances and register them with the Cluster
-* Step 3 - Create an ECS Task
+* Step 3 - Create the Minion ECS task
 * Step 4 - Wait until the instances are running and registered with the Cluster
 * Step 5 - Fetch our Contatiner Instance IDs
 * Step 6 - Run a Minion Task with the requested instance count
 * Step 7 - Get public IP addresses from Gru and Minions
 * Step 8 - Run Gru with the specified JMX
   * JMeter does its thing here
-  * Once complete, copy the log and results.jtl file from Gru to Lucy
+  * Once complete, copy the jmeter.log and results.jtl files from Gru to Lucy
 * Step 9 - Stop all Tasks
-* Step 9 - Terminate all instances
-* Step 10 - Delete the cluster
+* Step 10 - Terminate all instances
+* Step 100 - Delete the cluster
 
 ```
 +-------------------------------------+
@@ -81,7 +81,7 @@ This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Min
        | |
   .jmx | | .log/.jtl
        | v
-   +---------+
+   +----------+
    |          |
    |   Lucy   |
    |          |
