@@ -5,7 +5,21 @@
 # Leverages the AWS ECS CLI tool:
 # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_AWSCLI.html
 
+# if the command line is not a .jmx file, then it's another command the user wants to call
+if [ "${1}" != '' ]; then
+  if [ ${1##*.} != 'jmx' ]; then
+    exec "$@"
+  fi
+fi
+
 # check for all required variables
+if [ "$1" != '' ]; then
+  INPUT_JMX=$1
+fi
+if [ "$INPUT_JMX" == '' ]; then
+  echo "Please set a INPUT_JMX or pass a JMX file on the command line"
+  exit 3
+fi
 if [ "$KEY_NAME" == '' ]; then
   echo "Please specify KEY_NAME and provide the filename (without the path and extension)"
   exit 1
@@ -14,13 +28,7 @@ if [ "$SECURITY_GROUP" == '' ]; then
   echo "Please set a SECURITY_GROUP that allows ports 22, 1099, 50000, 51000 (tcp) from all ports (e.g. sg-12345678)"
   exit 2
 fi
-if [ "$1" != '' ]; then
-  INPUT_JMX=$1
-fi
-if [ "$INPUT_JMX" == '' ]; then
-  echo "Please set a INPUT_JMX or pass a JMX file on the command line"
-  exit 3
-fi
+
 if [ "$SUBNET_ID" == '' ]; then
   echo "ECS requires using a VPC, so you must specify a SUBNET_ID of yor VPC"
   exit 4
@@ -194,7 +202,7 @@ scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyC
 echo "Running Docker to start JMeter in Gru mode"
 JMX_IN_COMTAINER=/plans/$(basename $INPUT_JMX)
 ssh -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST} \
- "docker run -p 1099:1099 -p 51000:51000 -v /tmp:/plans -v /logs:/logs --env MINION_HOSTS=$MINION_HOSTS smithmicro/jmeter-ecs gru $JMX_IN_COMTAINER"
+ "docker run -p 1099:1099 -p 51000:51000 -v /tmp:/plans -v /logs:/logs --env MINION_HOSTS=$MINION_HOSTS smithmicro/jmeter $JMX_IN_COMTAINER"
 
 echo "Copying JTL files from Gru"
 scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST}:/logs/* /logs

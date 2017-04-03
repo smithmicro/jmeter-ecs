@@ -7,21 +7,14 @@ ENV JMETER_HOME /opt/$JMETER_VERSION
 ENV PATH $JMETER_HOME/bin:$PATH
 
 # overridable environment variables
-ENV MINION_HOSTS=
 ENV RESULTS_LOG results.jtl
 ENV JMETER_FLAGS=
-ENV AWS_ACCESS_KEY_ID=
-ENV AWS_SECRET_ACCESS_KEY=
-ENV AWS_DEFAULT_REGION=
 
-# Install the AWS CLI which requires PIP
+# Install the required tools for JMeter
 RUN apk add --update --no-cache \
     curl \
     openssh-client \
-    python \
-    py-pip \
-    unzip \
-  && pip install awscli
+    unzip
 
 WORKDIR /opt
 
@@ -37,8 +30,8 @@ RUN curl -O https://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz 
   && rm *.zip
 
 # copy our scripts and Task definition
-COPY entrypoint.sh lucy.sh cluster.sh minion.json ./jmeter/
-RUN chmod +x jmeter/*.sh
+COPY entrypoint.sh ./jmeter/
+RUN chmod +x jmeter/entrypoint.sh
 
 WORKDIR /logs
 

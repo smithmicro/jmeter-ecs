@@ -23,7 +23,7 @@
         }
       ],
       "name": "minion",
-      "image": "smithmicro/jmeter-ecs:latest",
+      "image": "smithmicro/jmeter:latest",
       "memoryReservation": 950
     }
   ],

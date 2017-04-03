@@ -1,17 +1,9 @@
 #!/bin/sh
 #
-# Main entrypoint for our Docker image - runs Lucy, Gru, Minions or other commands
+# Main entrypoint for our Docker image - runs Gru, Minions or other commands
 
-# any .jmx file passed in the command line we treat as 'Lucy'
+# any .jmx file passed in the command line we act as 'Gru'
 if [ ${1##*.} = 'jmx' ]; then
-
-  echo "Running Lucy"
-  exec /opt/jmeter/lucy.sh $1
-
-fi
-
-# act as 'Gru'
-if [ "$1" = 'gru' ]; then
 
   if [ "$MINION_HOSTS" = '' ]; then
     echo "MINION_HOSTS must be specified - a command separated list of hostnames or IP addresses"
@@ -35,7 +27,7 @@ if [ "$1" = 'gru' ]; then
     -Dclient.rmi.localport=51000 \
     -Djava.rmi.server.hostname=${PUBLIC_HOSTNAME} \
     -l $RESULTS_LOG \
-    -t $2
+    -t $1
 
 fi
 

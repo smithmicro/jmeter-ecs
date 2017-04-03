@@ -4,7 +4,7 @@ JMeter Image for Distributed Testing on EC2 Container Service (ECS)
 For more information on JMeter Distributed Testing, see:
 * http://jmeter.apache.org/usermanual/remote-test.html
 
-_Warning: Using this Docker image will incur compute and storate costs in AWS.  Care is taken to terminate all instances and volumes after JMeter tests complete, but bugs could allow these resources to continue to run.  See the issues list for more detail._
+_Warning: Using this Docker image will incur compute and storage costs in AWS.  Care is taken to terminate all instances and volumes after JMeter tests complete, but bugs could allow these resources to continue to run.  See the issues list for more detail._
 
 ## How to Use
 The Docker image can be run as-is with a number of required environement variables.
@@ -31,7 +31,7 @@ docker run -v <oath to jmx>:/plans -v <path to pem>:/keys -v <path to logs>:/log
     --env KEY_NAME=<key pair name without extension> \
     --env MINION_COUNT=<number of minions> \
     --enc INSTANCE_TYPE=<valid ECS instance type> \
-    smithmicro/jmeter-ecs /plans/demo.jmx
+    smithmicro/lucy /plans/demo.jmx
 ```
 For 5 test instances in N. Virginia, `docker run` would look like this, assuming your `jmeter-key.pem` file is located in the `keys` subdirectory:
 ```
@@ -44,7 +44,7 @@ docker run -v $PWD/plans:/plans -v $PWD/keys:/keys -v $PWD/logs:/logs \
     --env KEY_NAME=jmeter-key \
     --env MINION_COUNT=5 \
     --enc INSTANCE_TYPE=t2.small \
-    smithmicro/jmeter-ecs /plans/demo.jmx
+    smithmicro/lucy /plans/demo.jmx
 ```
 
 ## Architecture
@@ -69,13 +69,13 @@ This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Min
 +-------------------------------------+
 |  EC2           +-----------------+  |
 |                |  ECS            |  |
-|  +---------+   | +--------+      |  |
-|  |         |   | | +--------+    |  |
-|  |   Gru   |---->| | +--------+  |  |      +--------+
-|  |         |<----| | |        |  |  |      |        |
-|  +---------+   | +-| | Minion |----------->| Target |
-|      ^ |       |   +-|        |  |  |      |        |
-|      | |       |     +--------+  |  |      +--------+
+|                | +--------+      |  |
+|  +---------+   | | +--------+    |  |      +--------+
+|  |         |---->| | +--------+ ---------->|        |
+|  |   Gru   |<----| | |        | ---------->| Target |
+|  |         |   | +-| | Minion | ---------->|        |
+|  +---------+   |   +-|        |  |  |      +--------+
+|      ^ |       |     +--------+  |  |
 |      | |       +-----------------+  |
 +------|-|----------------------------+
        | |
@@ -89,13 +89,13 @@ This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Min
 ```
 
 ### Volumes
-This image has 3 volumes:
+The `lucy` container uses 3 volumes:
 * `/plans` - mapped into the orchestrator to provide the input JMX files
 * `/keys` - mapped into the orchestrator to provide the PEM file
 * `/logs` - mapped into the orchestrator to provide the output jmeter.log and results.jtl
 
 ## Local Testing with Docker Compose
-The included docker-compose.yml file allows for local testing of the Gru and Minion nodes without incurring costs from AWS.
+The `jmeter/docker-compose.yml` file allows for local testing of the Gru and Minion nodes without incurring costs from AWS.
 Edit the docker-compose.yml file and replicate the `links`, `environment` and `minionN` sections to increase the number of Minions to test.
 ```
 version: '2'
@@ -112,13 +112,13 @@ services:
       - MINION_HOSTS=minion1,minion2,minion3,minion4
     ...
   minion1:
-    image: smithmicro/jmeter-ecs:latest
+    image: smithmicro/jmeter:latest
   minion2:
-    image: smithmicro/jmeter-ecs:latest
+    image: smithmicro/jmeter:latest
   minion3:
-    image: smithmicro/jmeter-ecs:latest
+    image: smithmicro/jmeter:latest
   minion4:
-    image: smithmicro/jmeter-ecs:latest
+    image: smithmicro/jmeter:latest
 
 ```
 Then run:

@@ -3,11 +3,11 @@ version: '2'
 services:
   gru:
     build: .
-    image: smithmicro/jmeter-ecs:latest
+    image: smithmicro/jmeter:latest
     volumes:
-      - ./plans:/plans
+      - ../plans:/plans
       - ./logs:/logs
-    command: "gru /plans/demo.jmx"
+    command: "/plans/demo.jmx"
     links: 
       - minion1
       - minion2
@@ -16,8 +16,8 @@ services:
       - MINION_HOSTS=minion1,minion2,minion3
       - JMETER_FLAGS=-X
   minion1:
-    image: smithmicro/jmeter-ecs:latest
+    image: smithmicro/jmeter:latest
   minion2:
-    image: smithmicro/jmeter-ecs:latest
+    image: smithmicro/jmeter:latest
   minion3:
-    image: smithmicro/jmeter-ecs:latest
+    image: smithmicro/jmeter:latest
