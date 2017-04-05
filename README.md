@@ -63,7 +63,7 @@ This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Min
   * Once complete, copy the jmeter.log and results.jtl files from Gru to Lucy
 * Step 9 - Stop all Tasks
 * Step 10 - Terminate all instances
-* Step 100 - Delete the cluster
+* Step 11 - Delete the cluster
 
 ```
 +-------------------------------------+

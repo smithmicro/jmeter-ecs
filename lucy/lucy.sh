@@ -35,6 +35,9 @@ if [ "$SUBNET_ID" == '' ]; then
 fi
 
 # check all optional variables
+if [ "$JMETER_VERSION" == '' ]; then
+  JMETER_VERSION=latest
+fi
 if [ "$AWS_DEFAULT_REGION" == '' ]; then
   AWS_DEFAULT_REGION=$(aws configure get region)
 fi
@@ -60,13 +63,13 @@ if [ "$CLUSTER_NAME" == '' ]; then
   CLUSTER_NAME=JMeter
 fi
 if [ "$MINION_TASK_DEFINITION" == '' ]; then
-  MINION_TASK_DEFINITION=JMeterMinion
+  MINION_TASK_DEFINITION=Minion
 fi
 if [ "$MINION_TAGS" == '' ]; then
-  MINION_TAGS=ResourceType=instance,Tags=[{Key=Name,Value=JMeter-Minion},{Key=Owner,Value=$OWNER},{Key=Stack,Value=JMeter}]
+  MINION_TAGS=ResourceType=instance,Tags=[{Key=Name,Value=Minion},{Key=Owner,Value=$OWNER},{Key=Stack,Value=JMeter}]
 fi
 if [ "$GRU_TAGS" == '' ]; then
-  GRU_TAGS=ResourceType=instance,Tags=[{Key=Name,Value=JMeter-Gru},{Key=Owner,Value=$OWNER},{Key=Stack,Value=JMeter}]
+  GRU_TAGS=ResourceType=instance,Tags=[{Key=Name,Value=Gru},{Key=Owner,Value=$OWNER},{Key=Stack,Value=JMeter}]
 fi
 
 # derive IMAGE_ID from AWS_DEFAULT_REGION
@@ -146,6 +149,10 @@ fi
 echo "Gru instance started: $GRU_INSTANCE_ID"
 
 # Step 3 - Create the Minion ECS task
+
+# load the requested Docker image using JMETER_VERSION 
+sed -i 's/smithmicro/jmeter:latest/smithmicro/jmeter:'"$JMETER_VERSION"'/' /opt/jmeter/minion.json
+
 echo "Register Minion task definition"
 MINION_TASK_ARN=$(aws ecs register-task-definition --cli-input-json file:///opt/jmeter/minion.json --query 'taskDefinition.taskDefinitionArn' --output text | tr -d '\n')
 echo "Minion task registered: $MINION_TASK_ARN"
@@ -202,7 +209,7 @@ scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyC
 echo "Running Docker to start JMeter in Gru mode"
 JMX_IN_COMTAINER=/plans/$(basename $INPUT_JMX)
 ssh -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST} \
- "docker run -p 1099:1099 -p 51000:51000 -v /tmp:/plans -v /logs:/logs --env MINION_HOSTS=$MINION_HOSTS smithmicro/jmeter $JMX_IN_COMTAINER"
+ "docker run -p 1099:1099 -p 51000:51000 -v /tmp:/plans -v /logs:/logs --env MINION_HOSTS=$MINION_HOSTS smithmicro/jmeter:$JMETER_VERSION $JMX_IN_COMTAINER"
 
 echo "Copying JTL files from Gru"
 scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST}:/logs/* /logs
