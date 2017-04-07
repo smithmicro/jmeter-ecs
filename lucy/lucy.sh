@@ -150,8 +150,9 @@ echo "Gru instance started: $GRU_INSTANCE_ID"
 
 # Step 3 - Create the Minion ECS task
 
-# load the requested Docker image using JMETER_VERSION 
-sed -i 's/smithmicro/jmeter:latest/smithmicro/jmeter:'"$JMETER_VERSION"'/' /opt/jmeter/minion.json
+# load the requested Docker image using jmeter:JMETER_VERSION with name MINION_TASK_DEFINITION
+sed -i 's/JMeterMinion/'"$MINION_TASK_DEFINITION"'/' /opt/jmeter/minion.json
+sed -i 's*smithmicro/jmeter:latest*smithmicro/jmeter:'"$JMETER_VERSION"'*' /opt/jmeter/minion.json
 
 echo "Register Minion task definition"
 MINION_TASK_ARN=$(aws ecs register-task-definition --cli-input-json file:///opt/jmeter/minion.json --query 'taskDefinition.taskDefinitionArn' --output text | tr -d '\n')
@@ -232,7 +233,7 @@ aws ec2 wait instance-terminated --instance-ids $MINION_INSTANCE_IDS $GRU_INSTAN
 
 # Step 11 - Final cleanup
 echo "Deregister task $MINION_TASK_ARN"
-aws ecs deregister-task-definition --task-definition $MINION_TASK_ARN --output text
+aws ecs deregister-task-definition --task-definition $MINION_TASK_ARN --query 'taskDefinition.[taskDefinitionArn]' --output text
 
 echo "Deleting cluster/$CLUSTER_NAME"
 aws ecs delete-cluster --cluster $CLUSTER_NAME --query 'cluster.[clusterArn]' --output text

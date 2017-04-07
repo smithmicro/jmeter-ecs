@@ -1,13 +1,14 @@
 # JMeter for ECS
-JMeter Image for Distributed Testing on EC2 Container Service (ECS)
+JMeter Images for Distributed Testing on EC2 Container Service (ECS)
 
-For more information on JMeter Distributed Testing, see:
-* http://jmeter.apache.org/usermanual/remote-test.html
+This application uses two images:
+* `smithmicro/jmeter` - Contains the JMeter software that is deployed in ECS
+* `smithmicro/lucy` - The orcehstration image that can run behind a corporate firewall and manages AWS resources
 
-_Warning: Using this Docker image will incur compute and storage costs in AWS.  Care is taken to terminate all instances and volumes after JMeter tests complete, but bugs could allow these resources to continue to run.  See the issues list for more detail._
+_Warning: Using these Docker images will incur compute and storage costs in AWS.  Care is taken to terminate all instances and volumes after JMeter tests complete, but bugs could allow these resources to continue to run.  See the issues list for more detail._
 
 ## How to Use
-The Docker image can be run as-is with a number of required environement variables.
+The `smithmicro/lucy` Docker image can be run as-is with a number of required environement variables.
 
 Prerequisites to use this image:
 * Create a VPC with at least one subnet as ECS requires the use of VPC **
@@ -15,8 +16,8 @@ Prerequisites to use this image:
 * Create a security key pair and place in the `keys` subdirectory
 * Have your AWS CLI Access Key ID/Secret Access Key handy
 * Replace or edit the included `plans/demo.jmx` to run your specific tests
-* A Role named `ecsInstanceRole` created as per:
-  * http://docs.aws.amazon.com/AmazonECS/latest/developerguide/instance_IAM_role.html
+* Ensure you have a Role named `ecsInstanceRole`.  This is created by the ECS first-run experience.
+  * More details here: http://docs.aws.amazon.com/AmazonECS/latest/developerguide/instance_IAM_role.html
 
 ** If you do not have a VPC created, you can use the included `aws-setup.sh` script to create the VPC, Subnet and required Security Group.
 
@@ -50,21 +51,6 @@ docker run -v $PWD/plans:/plans -v $PWD/keys:/keys -v $PWD/logs:/logs \
 ## Architecture
 This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Minion* and *Lucy*.  *Gru* manages the *Minions* from within EC2, but *Lucy* orchestrates the entire process.
 
-*Lucy* runs the `lucy.sh` script to perform the following steps:
-* Step 1 - Create an ECS Cluster
-* Step 2 - Create all instances and register them with the Cluster
-* Step 3 - Create the Minion ECS task
-* Step 4 - Wait until the instances are running and registered with the Cluster
-* Step 5 - Fetch our Contatiner Instance IDs
-* Step 6 - Run a Minion Task with the requested instance count
-* Step 7 - Get public IP addresses from Gru and Minions
-* Step 8 - Run Gru with the specified JMX
-  * JMeter does its thing here
-  * Once complete, copy the jmeter.log and results.jtl files from Gru to Lucy
-* Step 9 - Stop all Tasks
-* Step 10 - Terminate all instances
-* Step 11 - Delete the cluster
-
 ```
 +-------------------------------------+
 |  EC2           +-----------------+  |
@@ -87,6 +73,21 @@ This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Min
    |          |
    +----------+
 ```
+
+*Lucy* runs the `lucy.sh` script to perform the following steps:
+* Step 1 - Create an ECS Cluster
+* Step 2 - Create all instances and register them with the Cluster
+* Step 3 - Create the Minion ECS task
+* Step 4 - Wait until the instances are running and registered with the Cluster
+* Step 5 - Fetch our Contatiner Instance IDs
+* Step 6 - Run a Minion Task with the requested instance count
+* Step 7 - Get public IP addresses from Gru and Minions
+* Step 8 - Run Gru with the specified JMX
+  * JMeter does its thing here
+  * Once complete, copy the jmeter.log and results.jtl files from Gru to Lucy
+* Step 9 - Stop all Tasks
+* Step 10 - Terminate all instances
+* Step 11 - Delete the cluster
 
 ### Volumes
 The `lucy` container uses 3 volumes:
@@ -133,6 +134,9 @@ This Docker image uses the Instance Metadata API documented here:
 
 To get the instance public hostname within the `entrypoint.sh` script, we call:
 * `curl -s --max-time 5 http://169.254.169.254/latest/meta-data/public-hostname`
+
+For more information on JMeter Distributed Testing, see:
+* http://jmeter.apache.org/usermanual/remote-test.html
 
 ## Inspired by...
 https://en.wikipedia.org/wiki/Despicable_Me_2

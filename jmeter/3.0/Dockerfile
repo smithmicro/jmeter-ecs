@@ -29,9 +29,9 @@ RUN curl -O https://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz 
   && unzip -n '*.zip' \
   && rm *.zip
 
-# copy our scripts and Task definition
-COPY entrypoint.sh ./jmeter/
-RUN chmod +x jmeter/entrypoint.sh
+# copy our entrypoint
+COPY entrypoint.sh /opt/jmeter/
+RUN chmod +x /opt/jmeter/entrypoint.sh
 
 WORKDIR /logs
 

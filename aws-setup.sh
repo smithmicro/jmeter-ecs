@@ -76,7 +76,15 @@ aws ec2 authorize-security-group-ingress --group-id $SG_ID --ip-permissions "$JM
 # tag all created resources
 aws ec2 create-tags --resources $VPC_ID $SUBNET_ID $IGW_ID $RTB_ID $SG_ID --tags $VPC_TAGS --output text
 
-echo "******** Use these two enviroment variabels in 'docker run'"
+echo "******** Use these two enviroment variables in 'docker run'"
 echo "  --env SUBNET_ID=$SUBNET_ID'"
 echo "  --env SECURITY_GROUP=$SG_ID'"
 echo "********"
+
+# ensure we have the Role name 'ecsInstanceRole' created
+# In most cases, the Amazon ECS instance role is automatically created for you in the console first-run experience.
+ECS_ROLE_ID=$(aws iam get-role --role-name ecsInstanceRole --query 'Role.[RoleId]' --output text | tr -d '\n')
+if [ "$ECS_ROLE_ID" == '' ]; then
+  echo "You must create the 'ecsInstanceRole' as outlined by this article:"
+  echo "http://docs.aws.amazon.com/AmazonECS/latest/developerguide/instance_IAM_role.html"
+fi
