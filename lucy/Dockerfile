@@ -18,9 +18,9 @@ RUN apk add --update --no-cache \
   && pip install \
     awscli
 
-# copy our scripts and Task definition
-COPY lucy.sh cluster.sh minion.json /opt/jmeter/
-RUN chmod +x /opt/jmeter/*.sh
+# copy our entrypoint script and Task definition
+COPY lucy.sh minion.json /opt/jmeter/
+RUN chmod +x /opt/jmeter/lucy.sh
 
 WORKDIR /logs
 

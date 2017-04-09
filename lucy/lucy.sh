@@ -18,17 +18,16 @@ if [ "$1" != '' ]; then
 fi
 if [ "$INPUT_JMX" == '' ]; then
   echo "Please set a INPUT_JMX or pass a JMX file on the command line"
-  exit 3
+  exit 1
 fi
 if [ "$KEY_NAME" == '' ]; then
   echo "Please specify KEY_NAME and provide the filename (without the path and extension)"
-  exit 1
+  exit 2
 fi
 if [ "$SECURITY_GROUP" == '' ]; then
   echo "Please set a SECURITY_GROUP that allows ports 22, 1099, 50000, 51000 (tcp) from all ports (e.g. sg-12345678)"
-  exit 2
+  exit 3
 fi
-
 if [ "$SUBNET_ID" == '' ]; then
   echo "ECS requires using a VPC, so you must specify a SUBNET_ID of yor VPC"
   exit 4
@@ -59,8 +58,11 @@ fi
 if [ "$OWNER" == '' ]; then
   OWNER=jmeter-ecs
 fi
-if [ "$CLUSTER_NAME" == '' ]; then
-  CLUSTER_NAME=JMeter
+if [ "$MINION_CLUSTER_NAME" == '' ]; then
+  MINION_CLUSTER_NAME=JMeter
+fi
+if [ "$GRU_CLUSTER_NAME" == '' ]; then
+  GRU_CLUSTER_NAME=JMeterGru
 fi
 if [ "$MINION_TASK_DEFINITION" == '' ]; then
   MINION_TASK_DEFINITION=Minion
@@ -105,32 +107,39 @@ esac
 echo "Using image $IMAGE_ID for $AWS_DEFAULT_REGION"
 
 # Step 1 - Create an ECS Cluster
-echo "Creating cluster/$CLUSTER_NAME"
-aws ecs create-cluster --cluster-name $CLUSTER_NAME --query 'cluster.[clusterArn]' --output text
+echo "Creating cluster/$MINION_CLUSTER_NAME"
+aws ecs create-cluster --cluster-name $MINION_CLUSTER_NAME --query 'cluster.[clusterArn]' --output text
 
-# replace our Cluster name in the script we pass to --user-data
-sed -i 's/CLUSTER_NAME/'"$CLUSTER_NAME"'/' /opt/jmeter/cluster.sh
+# create a setup script to configure our Cluster name that we pass to --user-data
+MINION_CLUSTER_SCRIPT=$'#!/bin/bash\necho ECS_CLUSTER='
+MINION_CLUSTER_SCRIPT="${MINION_CLUSTER_SCRIPT}$MINION_CLUSTER_NAME >> /etc/ecs/ecs.config"
+MINION_CLUSTER_BASE64=$(echo "$MINION_CLUSTER_SCRIPT" | base64 | tr -d '\n')
 
 # Step 2 - Create all instances and register them with the Cluster
-echo "Creating $MINION_COUNT Minion instances and register them to cluster/$CLUSTER_NAME"
+echo "Creating $MINION_COUNT Minion instances and register them to cluster/$MINION_CLUSTER_NAME"
 MINION_INSTANCE_IDS=$(aws ec2 run-instances --image-id $IMAGE_ID --count $MINION_COUNT --instance-type $INSTANCE_TYPE \
     --iam-instance-profile Name="ecsInstanceRole" --key-name $KEY_NAME \
-    --security-group-ids $SECURITY_GROUP --subnet-id $SUBNET_ID --user-data file:///opt/jmeter/cluster.sh \
+    --security-group-ids $SECURITY_GROUP --subnet-id $SUBNET_ID --user-data $MINION_CLUSTER_BASE64 \
     --tag-specifications "$MINION_TAGS" \
     --query 'Instances[*].[InstanceId]' --output text |
       tr '\n' ' ')
 if [ "$MINION_INSTANCE_IDS" == '' ]; then
   echo "Creating Minions failed"
-  echo "Deleting cluster/$CLUSTER_NAME"
-  aws ecs delete-cluster --cluster $CLUSTER_NAME --query 'cluster.[clusterArn]' --output text
+  echo "Deleting cluster/$MINION_CLUSTER_NAME"
+  aws ecs delete-cluster --cluster $MINION_CLUSTER_NAME --query 'cluster.[clusterArn]' --output text
   exit 6
 fi
 echo "Minion instances started: $MINION_INSTANCE_IDS"
 
+# create a setup script to configure our Gru Cluster name that we pass to --user-data
+GRU_CLUSTER_SCRIPT=$'#!/bin/bash\necho ECS_CLUSTER='
+GRU_CLUSTER_SCRIPT="${GRU_CLUSTER_SCRIPT}$GRU_CLUSTER_NAME >> /etc/ecs/ecs.config"
+GRU_CLUSTER_BASE64=$(echo "$GRU_CLUSTER_SCRIPT" | base64 | tr -d '\n')
+
 echo "Creating Gru instance"
 GRU_INSTANCE_ID=$(aws ec2 run-instances --image-id $IMAGE_ID --count 1 --instance-type $INSTANCE_TYPE \
     --iam-instance-profile Name="ecsInstanceRole" --key-name $KEY_NAME \
-    --security-group-ids $SECURITY_GROUP --subnet-id $SUBNET_ID \
+    --security-group-ids $SECURITY_GROUP --subnet-id $SUBNET_ID --user-data $GRU_CLUSTER_BASE64  \
     --tag-specifications "$GRU_TAGS" \
     --query 'Instances[*].[InstanceId]' --output text |
       tr '\n' ' ')
@@ -142,8 +151,8 @@ if [ "$GRU_INSTANCE_ID" == '' ]; then
   echo "Waiting for instances to terminate..."
   aws ec2 wait instance-terminated --instance-ids $MINION_INSTANCE_IDS --output text
 
-  echo "Deleting cluster/$CLUSTER_NAME"
-  aws ecs delete-cluster --cluster $CLUSTER_NAME --query 'cluster.[clusterArn]' --output text
+  echo "Deleting cluster/$MINION_CLUSTER_NAME"
+  aws ecs delete-cluster --cluster $MINION_CLUSTER_NAME --query 'cluster.[clusterArn]' --output text
   exit 7
 fi
 echo "Gru instance started: $GRU_INSTANCE_ID"
@@ -164,7 +173,7 @@ aws ec2 wait instance-running --instance-ids $MINION_INSTANCE_IDS $GRU_INSTANCE_
 echo "All instances running - return code $?"
 
 while true; do
-  CONTAINER_INSTANCE_COUNT=$(aws ecs list-container-instances --cluster $CLUSTER_NAME --output text | grep -c container-instance)
+  CONTAINER_INSTANCE_COUNT=$(aws ecs list-container-instances --cluster $MINION_CLUSTER_NAME --output text | grep -c container-instance)
   if [[ $CONTAINER_INSTANCE_COUNT == $MINION_COUNT ]]; then
     echo "Container instances started: $CONTAINER_INSTANCE_COUNT"
     break
@@ -174,17 +183,17 @@ while true; do
 done
 
 # Step 5 - Fetch our Contatiner Instance IDs
-CONTAINER_INSTANCE_IDS=$(aws ecs list-container-instances --cluster $CLUSTER_NAME --output text |
+CONTAINER_INSTANCE_IDS=$(aws ecs list-container-instances --cluster $MINION_CLUSTER_NAME --output text |
     awk '{print $2}' | tr '\n' ' ')
 echo "Container instances IDs: $CONTAINER_INSTANCE_IDS"
 
 # Step 6 - Run the Minion task with the requested count
 echo "Running task: $MINION_TASK_DEFINITION, instance count: $MINION_COUNT"
-MINION_TASK_IDS=$(aws ecs run-task --cluster $CLUSTER_NAME --task-definition $MINION_TASK_DEFINITION --count $MINION_COUNT \
+MINION_TASK_IDS=$(aws ecs run-task --cluster $MINION_CLUSTER_NAME --task-definition $MINION_TASK_DEFINITION --count $MINION_COUNT \
   --query 'tasks[*].[taskArn]' --output text | tr '\n' ' ')
 
 echo "Waiting for tasks to run: $MINION_TASK_IDS"
-aws ecs wait tasks-running --cluster $CLUSTER_NAME --tasks $MINION_TASK_IDS
+aws ecs wait tasks-running --cluster $MINION_CLUSTER_NAME --tasks $MINION_TASK_IDS
 if [ "$?" = '0' ]; then
   echo "Minion tasks running"
 else
@@ -217,10 +226,10 @@ scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyC
 
 # Step 9 - Stop all tesks
 echo "Stopping tasks"
-aws ecs list-tasks --cluster $CLUSTER_NAME --output text |
+aws ecs list-tasks --cluster $MINION_CLUSTER_NAME --output text |
   awk '{print $2}' |
   while read line; do
-    aws ecs stop-task --cluster $CLUSTER_NAME --task $line --query 'task.[taskArn]' --output text;
+    aws ecs stop-task --cluster $MINION_CLUSTER_NAME --task $line --query 'task.[taskArn]' --output text;
   done
 
 # Step 10 - Terminate all instances
@@ -235,7 +244,7 @@ aws ec2 wait instance-terminated --instance-ids $MINION_INSTANCE_IDS $GRU_INSTAN
 echo "Deregister task $MINION_TASK_ARN"
 aws ecs deregister-task-definition --task-definition $MINION_TASK_ARN --query 'taskDefinition.[taskDefinitionArn]' --output text
 
-echo "Deleting cluster/$CLUSTER_NAME"
-aws ecs delete-cluster --cluster $CLUSTER_NAME --query 'cluster.[clusterArn]' --output text
+echo "Deleting cluster/$MINION_CLUSTER_NAME"
+aws ecs delete-cluster --cluster $MINION_CLUSTER_NAME --query 'cluster.[clusterArn]' --output text
 
 echo "Complete"
