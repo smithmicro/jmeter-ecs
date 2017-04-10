@@ -35,7 +35,7 @@ RUN chmod +x /opt/jmeter/entrypoint.sh
 
 WORKDIR /logs
 
-EXPOSE 1099 4445 50000 51000
+EXPOSE 1099 50000 51000 4445/udp
 
 # default command in the entrypoint is 'minion'
 ENTRYPOINT ["/opt/jmeter/entrypoint.sh"]
