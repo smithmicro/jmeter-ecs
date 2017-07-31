@@ -3,7 +3,7 @@ JMeter Images for Distributed Testing on EC2 Container Service (ECS)
 
 This application uses two images:
 * `smithmicro/jmeter` - Contains the JMeter software that is deployed in ECS
-* `smithmicro/lucy` - The orcehstration image that can run behind a corporate firewall and manages AWS resources
+* `smithmicro/lucy` - The orchestration image that can run behind a corporate firewall and manages AWS resources
 
 _Warning: Using these Docker images will incur compute and storage costs in AWS.  Care is taken to terminate all instances and volumes after JMeter tests complete, but bugs could allow these resources to continue to run.  See the issues list for more detail._
 
