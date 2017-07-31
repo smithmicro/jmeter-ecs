@@ -189,9 +189,15 @@ echo "Container instances IDs: $CONTAINER_INSTANCE_IDS"
 
 # Step 6 - Run the Minion task with the requested count
 echo "Running task: $MINION_TASK_DEFINITION, instance count: $MINION_COUNT"
-MINION_TASK_IDS=$(aws ecs run-task --cluster $MINION_CLUSTER_NAME --task-definition $MINION_TASK_DEFINITION --count $MINION_COUNT \
-  --query 'tasks[*].[taskArn]' --output text | tr '\n' ' ')
-
+ECS_MAX=10
+ECS_REMAINING_COUNT=$MINION_COUNT
+while [ $ECS_REMAINING_COUNT -gt 0 ]
+do
+  ECS_REQUEST_COUNT=$(($ECS_REMAINING_COUNT<$ECS_MAX?$ECS_REMAINING_COUNT:$ECS_MAX))
+  MINION_TASK_IDS=$(aws ecs run-task --cluster $MINION_CLUSTER_NAME --task-definition $MINION_TASK_DEFINITION --count $ECS_REQUEST_COUNT \
+    --query 'tasks[*].[taskArn]' --output text | tr '\n' ' ')
+  ECS_REMAINING_COUNT=$((ECS_REMAINING_COUNT-ECS_REQUEST_COUNT))
+done
 echo "Waiting for tasks to run: $MINION_TASK_IDS"
 aws ecs wait tasks-running --cluster $MINION_CLUSTER_NAME --tasks $MINION_TASK_IDS
 if [ "$?" = '0' ]; then
@@ -221,7 +227,7 @@ JMX_IN_COMTAINER=/plans/$(basename $INPUT_JMX)
 ssh -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST} \
  "docker run -p 1099:1099 -p 51000:51000 -v /tmp:/plans -v /logs:/logs --env MINION_HOSTS=$MINION_HOSTS smithmicro/jmeter:$JMETER_VERSION $JMX_IN_COMTAINER"
 
-echo "Copying JTL files from Gru"
+echo "Copying results from Gru"
 scp -r -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST}:/logs/* /logs
 
 # Step 9 - Stop all tesks
