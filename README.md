@@ -31,7 +31,7 @@ docker run -v <oath to jmx>:/plans -v <path to pem>:/keys -v <path to logs>:/log
     --env SUBNET_ID=<subnet ID within your VPC> \
     --env KEY_NAME=<key pair name without extension> \
     --env MINION_COUNT=<number of minions> \
-    --enc INSTANCE_TYPE=<valid ECS instance type> \
+    --env INSTANCE_TYPE=<valid ECS instance type> \
     smithmicro/lucy /plans/demo.jmx
 ```
 For 5 test instances in N. Virginia, `docker run` would look like this, assuming your `jmeter-key.pem` file is located in the `keys` subdirectory:
@@ -44,7 +44,7 @@ docker run -v $PWD/plans:/plans -v $PWD/keys:/keys -v $PWD/logs:/logs \
     --env SUBNET_ID=subnet-12345678 \
     --env KEY_NAME=jmeter-key \
     --env MINION_COUNT=5 \
-    --enc INSTANCE_TYPE=t2.small \
+    --env INSTANCE_TYPE=t2.small \
     smithmicro/lucy /plans/demo.jmx
 ```
 
@@ -75,19 +75,13 @@ This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Min
 ```
 
 *Lucy* runs the `lucy.sh` script to perform the following steps:
-* Step 1 - Create an ECS Cluster
-* Step 2 - Create all instances and register them with the Cluster
-* Step 3 - Create the Minion ECS task
-* Step 4 - Wait until the instances are running and registered with the Cluster
-* Step 5 - Fetch our Contatiner Instance IDs
-* Step 6 - Run a Minion Task with the requested instance count
-* Step 7 - Get public IP addresses from Gru and Minions
-* Step 8 - Run Gru with the specified JMX
-  * JMeter does its thing here
-  * Once complete, copy the jmeter.log and results.jtl files from Gru to Lucy
-* Step 9 - Stop all Tasks
-* Step 10 - Terminate all instances
-* Step 11 - Delete the cluster
+* Step 1 - Create 2 ECS Clusters
+* Step 2 - Fetch our Contatiner Instance IDs
+* Step 3 - Run a Minion Task with the requested instance count
+* Step 4 - Get public IP addresses from Gru and Minions
+* Step 5 - Run Gru with the specified JMX
+* Step 6 - Fetch the results
+* Step 7 - Delete the clusters
 
 ### Volumes
 The `lucy` container uses 3 volumes:
@@ -137,6 +131,9 @@ To get the instance public hostname within the `entrypoint.sh` script, we call:
 
 For more information on JMeter Distributed Testing, see:
 * http://jmeter.apache.org/usermanual/remote-test.html
+
+You can specify which JMeter version to run by adding the following to the Docker run line.  By default, the `latest` tag is used.
+* --env JMETER_VERSION=3.3
 
 ## Inspired by...
 https://en.wikipedia.org/wiki/Despicable_Me_2
