@@ -78,7 +78,7 @@ This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Min
 * Step 1 - Create 2 ECS Clusters
 * Step 2 - Fetch our Contatiner Instance IDs
 * Step 3 - Run a Minion Task with the requested instance count
-* Step 4 - Get public IP addresses from Gru and Minions
+* Step 4 - Get IP addresses from Gru and Minions
 * Step 5 - Run Gru with the specified JMX
 * Step 6 - Fetch the results
 * Step 7 - Delete the clusters
