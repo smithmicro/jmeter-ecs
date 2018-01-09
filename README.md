@@ -49,29 +49,30 @@ docker run -v $PWD/plans:/plans -v $PWD/keys:/keys -v $PWD/logs:/logs \
 ```
 
 ## Architecture
-This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Minion* and *Lucy*.  *Gru* manages the *Minions* from within EC2, but *Lucy* orchestrates the entire process.
+This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Minion* and *Lucy*.  *Gru* manages the *Minions* from within ECS, but *Lucy* orchestrates the entire process.
 
 ```
-+-------------------------------------+
-|  EC2           +-----------------+  |
-|                |  ECS            |  |
-|                | +--------+      |  |
-|  +---------+   | | +--------+    |  |      +--------+
-|  |         |---->| | +--------+ ---------->|        |
-|  |   Gru   |<----| | |        | ---------->| Target |
-|  |         |   | +-| | Minion | ---------->|        |
-|  +---------+   |   +-|        |  |  |      +--------+
-|      ^ |       |     +--------+  |  |
-|      | |       +-----------------+  |
-+------|-|----------------------------+
-       | |
-  .jmx | | .log/.jtl
-       | v
-   +----------+
-   |          |
-   |   Lucy   |
-   |          |
-   +----------+
++--------------------------------------+
+|  EC2                                 |
+|  +--------------------------------+  |
+|  |  ECS                           |  |
+|  |                +--------+      |  |
+|  |  +-------+     | +--------+    |  |      +--------+
+|  |  |       |---->| | +--------+ ---------->|        |
+|  |  |  Gru  |<----| | |        | ---------->| Target |
+|  |  |       |     +-| | Minion | ---------->|        |
+|  |  +-------+       +-|        |  |  |      +--------+
+|  |     ^ |            +--------+  |  |
+|  +-----|-|------------------------+  |
++--------|-|---------------------------+
+         | |
+    .jmx | | .log/.jtl
+         | v
+     +----------+
+     |          |
+     |   Lucy   |
+     |          |
+     +----------+
 ```
 
 *Lucy* runs the `lucy.sh` script to perform the following steps:
@@ -134,6 +135,9 @@ For more information on JMeter Distributed Testing, see:
 
 You can specify which JMeter version to run by adding the following to the Docker run line.  By default, the `latest` tag is used.
 * --env JMETER_VERSION=3.3
+
+If you would like to run Lucy in AWS, and it is running in the same VPC as Gru, you can configure Lucy to use the Private IP address of Gru:
+* --env GRU_PRIVATE_IP=true
 
 ## Inspired by...
 https://en.wikipedia.org/wiki/Despicable_Me_2

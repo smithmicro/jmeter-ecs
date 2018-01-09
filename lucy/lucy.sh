@@ -69,15 +69,6 @@ if [ "$VPC_ID" == '' ]; then
   VPC_ID=$(aws ec2 describe-security-groups --group-ids $SECURITY_GROUP --query 'SecurityGroups[*].[VpcId]' --output text)
 fi
 
-# Step 0 - Detect if Lucy is running in AWS
-echo "Detecting an AWS Environment"
-PUBLIC_HOSTNAME=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/public-hostname)
-if [ "$PUBLIC_HOSTNAME" = '' ]; then
-  echo "Lucy not running in AWS.  Using Gru's Public IP Addresses."
-else
-  echo "Lucy running in AWS.  Using Gru's Private IP Addresses."
-fi
-
 # Step 1 - Create 2 ECS Clusters
 ecs-cli --version
 echo "Creating cluster/$MINION_CLUSTER_NAME"
@@ -116,15 +107,17 @@ GRU_INSTANCE_ID=$(aws ecs describe-container-instances --cluster $GRU_CLUSTER_NA
     --container-instances $GRU_CONTAINER_INSTANCE_ID --query 'containerInstances[*].[ec2InstanceId]' --output text)
 echo "Gru instances ID: $GRU_INSTANCE_ID"
 
-# Step 3 - Run the Minion task with the requested count
+# Step 3 - Run the Minion task with the requested JMeter version and instance count
+sed -i 's/jmeter:latest/jmeter:'"$JMETER_VERSION"'/' /opt/jmeter/lucy.yml
 ecs-cli compose --file /opt/jmeter/lucy.yml up --cluster $MINION_CLUSTER_NAME
 ecs-cli compose --file /opt/jmeter/lucy.yml --cluster $MINION_CLUSTER_NAME scale $MINION_COUNT
 
 # Step 4 - Get IP addresses from Gru (Public or Private) and Minions (always Private)
-if [ "$PUBLIC_HOSTNAME" = '' ]; then
+if [ "$GRU_PRIVATE_IP" = '' ]; then
   GRU_HOST=$(aws ec2 describe-instances --instance-ids $GRU_INSTANCE_ID \
       --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text | tr -d '\n')
 else
+  cho "Using Gru's Private IP"
   GRU_HOST=$(aws ec2 describe-instances --instance-ids $GRU_INSTANCE_ID \
       --query 'Reservations[*].Instances[*].[PrivateIpAddress]' --output text | tr -d '\n')
 fi

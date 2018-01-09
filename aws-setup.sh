@@ -77,8 +77,8 @@ aws ec2 authorize-security-group-ingress --group-id $SG_ID --ip-permissions "$JM
 aws ec2 create-tags --resources $VPC_ID $SUBNET_ID $IGW_ID $RTB_ID $SG_ID --tags $VPC_TAGS --output text
 
 echo "******** Use these two enviroment variables in 'docker run'"
-echo "  --env SUBNET_ID=$SUBNET_ID'"
-echo "  --env SECURITY_GROUP=$SG_ID'"
+echo "  --env SUBNET_ID=$SUBNET_ID"
+echo "  --env SECURITY_GROUP=$SG_ID"
 echo "********"
 
 # ensure we have the Role name 'ecsInstanceRole' created
