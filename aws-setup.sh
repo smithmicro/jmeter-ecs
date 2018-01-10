@@ -9,9 +9,13 @@ if [ "$CIDR_BLOCK" == '' ]; then
   # create a CIDR block at 10.74, the 74 being ASCII 'J'
   CIDR_BLOCK=10.74.0.0/16
 fi
-if [ "$SUBNET_CIDR_BLOCK" == '' ]; then
+if [ "$SUBNET_CIDR_BLOCK1" == '' ]; then
   # this CIDR limits us to 251 JMeter Minions - protection from a typo trying to create 1000 instances
-  SUBNET_CIDR_BLOCK=10.74.1.0/24
+  SUBNET_CIDR_BLOCK1=10.74.1.0/24
+fi
+if [ "$SUBNET_CIDR_BLOCK2" == '' ]; then
+  # this CIDR limits us to 251 JMeter Minions - protection from a typo trying to create 1000 instances
+  SUBNET_CIDR_BLOCK2=10.74.2.0/24
 fi
 if [ "$OWNER" == '' ]; then
   OWNER=jmeter-ecs
@@ -39,10 +43,12 @@ echo "Created VPC $VPC_ID"
 # enable DNS hostnames
 aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames --output text
 
-# create a single subnet
-SUBNET_ID=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block $SUBNET_CIDR_BLOCK \
+# create a 2 subnets
+SUBNET_ID1=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block $SUBNET_CIDR_BLOCK1 \
     --query 'Subnet.[SubnetId]' --output text | tr -d '\n')
-echo "Created Subnet $SUBNET_ID"
+SUBNET_ID2=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block $SUBNET_CIDR_BLOCK2 \
+    --query 'Subnet.[SubnetId]' --output text | tr -d '\n')
+echo "Created Subnets $SUBNET_ID1,$SUBNET_ID2"
 
 # Step 2: Make Your Subnet Public
 IGW_ID=$(aws ec2 create-internet-gateway --query 'InternetGateway.[InternetGatewayId]' --output text | tr -d '\n')
@@ -59,12 +65,14 @@ if [ "$CREATE_ROUTE_RESULT" == 'True' ]; then
   echo "Created route for all traffic to the Internet Gateway"
 fi
 
-# make this a public subnet
-RTBASSOC_ID=$(aws ec2 associate-route-table  --subnet-id $SUBNET_ID --route-table-id $RTB_ID --output text | tr -d '\n')
-echo "Created Route Table Association $RTBASSOC_ID"
+# make these public subnet
+RTBASSOC_ID1=$(aws ec2 associate-route-table --subnet-id $SUBNET_ID1 --route-table-id $RTB_ID --output text | tr -d '\n')
+RTBASSOC_ID2=$(aws ec2 associate-route-table --subnet-id $SUBNET_ID2 --route-table-id $RTB_ID --output text | tr -d '\n')
+echo "Created Route Table Associations $RTBASSOC_ID1,$RTBASSOC_ID2"
 
 # we need public IP addresses so instances can register with ECS clusters
-aws ec2 modify-subnet-attribute --subnet-id $SUBNET_ID --map-public-ip-on-launch
+aws ec2 modify-subnet-attribute --subnet-id $SUBNET_ID1 --map-public-ip-on-launch
+aws ec2 modify-subnet-attribute --subnet-id $SUBNET_ID2 --map-public-ip-on-launch
 
 # create a security group for JMeter
 SG_ID=$(aws ec2 create-security-group --group-name "JMeter" --description "JMeter Security Group" --vpc-id $VPC_ID --output text | tr -d '\n')
@@ -74,10 +82,10 @@ JMETER_IP_PERMISSIONS='[{"IpProtocol": "tcp", "FromPort": 22, "ToPort": 22, "IpR
 aws ec2 authorize-security-group-ingress --group-id $SG_ID --ip-permissions "$JMETER_IP_PERMISSIONS"
 
 # tag all created resources
-aws ec2 create-tags --resources $VPC_ID $SUBNET_ID $IGW_ID $RTB_ID $SG_ID --tags $VPC_TAGS --output text
+aws ec2 create-tags --resources $VPC_ID $SUBNET_ID1 $SUBNET_ID2 $IGW_ID $RTB_ID $SG_ID --tags $VPC_TAGS --output text
 
 echo "******** Use these two enviroment variables in 'docker run'"
-echo "  --env SUBNET_ID=$SUBNET_ID"
+echo "  --env SUBNET_ID=$SUBNET_ID1,$SUBNET_ID2"
 echo "  --env SECURITY_GROUP=$SG_ID"
 echo "********"
 

@@ -26,7 +26,7 @@ if [ "$KEY_NAME" == '' ]; then
   exit 2
 fi
 if [ "$SECURITY_GROUP" == '' ]; then
-  echo "Please set a SECURITY_GROUP that allows ports 22, 1099, 50000, 51000 (tcp) from all ports (e.g. sg-12345678)"
+  echo "Please set a SECURITY_GROUP that allows ports 22,1099,50000,51000/tcp and 4445/udp from all ports (e.g. sg-12345678)"
   exit 3
 fi
 if [ "$SUBNET_ID" == '' ]; then
@@ -52,6 +52,9 @@ if [ "$AWS_SECRET_ACCESS_KEY" == '' ]; then
 fi
 if [ "$INSTANCE_TYPE" == '' ]; then
   INSTANCE_TYPE=t2.micro
+fi
+if [ "$MEM_LIMIT" == '' ]; then
+  MEM_LIMIT=950m
 fi
 if [ "$MINION_COUNT" == '' ]; then
   MINION_COUNT=2
@@ -84,7 +87,7 @@ do
   MINION_CONTAINER_INSTANCE_IDS=$(aws ecs list-container-instances --cluster $MINION_CLUSTER_NAME --output text |
       awk '{print $2}' | tr '\n' ' ')
   if [ "$MINION_CONTAINER_INSTANCE_IDS" == '' ]; then
-    echo "Waiting for Minion container instances IDs.."
+    echo "Waiting for Minion container instance IDs.."
     sleep 5
   fi
 done
@@ -98,7 +101,7 @@ do
   GRU_CONTAINER_INSTANCE_ID=$(aws ecs list-container-instances --cluster $GRU_CLUSTER_NAME --output text |
       awk '{print $2}' | tr '\n' ' ')
   if [ "$GRU_CONTAINER_INSTANCE_ID" == '' ]; then
-    echo "Waiting for Gru container instances ID.."
+    echo "Waiting for Gru container instance ID..."
     sleep 5
   fi
 done
@@ -107,8 +110,9 @@ GRU_INSTANCE_ID=$(aws ecs describe-container-instances --cluster $GRU_CLUSTER_NA
     --container-instances $GRU_CONTAINER_INSTANCE_ID --query 'containerInstances[*].[ec2InstanceId]' --output text)
 echo "Gru instances ID: $GRU_INSTANCE_ID"
 
-# Step 3 - Run the Minion task with the requested JMeter version and instance count
+# Step 3 - Run the Minion task with the requested JMeter version, instance count and memory
 sed -i 's/jmeter:latest/jmeter:'"$JMETER_VERSION"'/' /opt/jmeter/lucy.yml
+sed -i 's/950m/'"$MEM_LIMIT"'/' /opt/jmeter/lucy.yml
 ecs-cli compose --file /opt/jmeter/lucy.yml up --cluster $MINION_CLUSTER_NAME
 ecs-cli compose --file /opt/jmeter/lucy.yml --cluster $MINION_CLUSTER_NAME scale $MINION_COUNT
 
