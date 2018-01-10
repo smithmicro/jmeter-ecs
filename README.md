@@ -121,7 +121,7 @@ docker-compose up
 ```
 Using the `docker-compose scale` command does not work as it creates hostnames like `minion_1`.  This causes an error in JMeter as it uses the hostname in URL form and sees the underscore as an illegal URL character.
 
-## Notes
+## Environment Variables
 The following required and optional environment variables are supported:
 
 | Variable | Required | Default | Notes |
@@ -132,7 +132,7 @@ The following required and optional environment variables are supported:
 |INPUT_JMX|Yes|None|File path of JMeter Test file to run (.jmx).  You can optionally specify this as the first command line option of `docker run`|
 |KEY_NAME|Yes|None|AWS Security Key Pair .pem file (do not specify the .pem extension)|
 |SECURITY_GROUP|Yes|None|AWS Secuirty group that allows ports 22,1099,50000,51000/tcp and 4445/udp from all ports (e.g. sg-12345678)|
-|SUBNET_ID|Yes|None|One or more Subnets that are assigned to your VPC|
+|SUBNET_ID|Yes|None|One or more Subnets (comma separated) that are assigned to your VPC|
 |VPC_ID||VPC assigned to SUBNET_ID|We dautomatically erive this from your SUBNET_ID|
 |JMETER_VERSION||latest|smithmicro/lucy Image tag.  See Docker Hub for [available versions](https://hub.docker.com/r/smithmicro/jmeter/tags/).|
 |INSTANCE_TYPE||t2.micro|To double your memory, pass t2.small|
