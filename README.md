@@ -12,7 +12,7 @@ The `smithmicro/lucy` Docker image can be run as-is with a number of required en
 
 Prerequisites to use this image:
 * Create a VPC with at least one subnet as ECS requires the use of VPC **
-* Create a VPC security group that allows ports 22, 1099, 50000 and 51000 (tcp) to the VPC **
+* Create a VPC security group that allows ports 22, 1099, 50000 and 51000 (tcp) and 4445 (udp) to the VPC **
 * Create a security key pair and place in the `keys` subdirectory
 * Have your AWS CLI Access Key ID/Secret Access Key handy
 * Replace or edit the included `plans/demo.jmx` to run your specific tests
@@ -31,7 +31,6 @@ docker run -v <oath to jmx>:/plans -v <path to pem>:/keys -v <path to logs>:/log
     --env SUBNET_ID=<subnet ID within your VPC> \
     --env KEY_NAME=<key pair name without extension> \
     --env MINION_COUNT=<number of minions> \
-    --enc INSTANCE_TYPE=<valid ECS instance type> \
     smithmicro/lucy /plans/demo.jmx
 ```
 For 5 test instances in N. Virginia, `docker run` would look like this, assuming your `jmeter-key.pem` file is located in the `keys` subdirectory:
@@ -44,50 +43,44 @@ docker run -v $PWD/plans:/plans -v $PWD/keys:/keys -v $PWD/logs:/logs \
     --env SUBNET_ID=subnet-12345678 \
     --env KEY_NAME=jmeter-key \
     --env MINION_COUNT=5 \
-    --enc INSTANCE_TYPE=t2.small \
     smithmicro/lucy /plans/demo.jmx
 ```
 
 ## Architecture
-This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Minion* and *Lucy*.  *Gru* manages the *Minions* from within EC2, but *Lucy* orchestrates the entire process.
+This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Minion* and *Lucy*.  *Gru* manages the *Minions* from within ECS, but *Lucy* orchestrates the entire process.
 
 ```
-+-------------------------------------+
-|  EC2           +-----------------+  |
-|                |  ECS            |  |
-|                | +--------+      |  |
-|  +---------+   | | +--------+    |  |      +--------+
-|  |         |---->| | +--------+ ---------->|        |
-|  |   Gru   |<----| | |        | ---------->| Target |
-|  |         |   | +-| | Minion | ---------->|        |
-|  +---------+   |   +-|        |  |  |      +--------+
-|      ^ |       |     +--------+  |  |
-|      | |       +-----------------+  |
-+------|-|----------------------------+
-       | |
-  .jmx | | .log/.jtl
-       | v
-   +----------+
-   |          |
-   |   Lucy   |
-   |          |
-   +----------+
++--------------------------------------+
+|  EC2                                 |
+|  +--------------------------------+  |
+|  |  ECS                           |  |
+|  |                +--------+      |  |
+|  |  +-------+     | +--------+    |  |      +--------+
+|  |  |       |---->| | +--------+ ---------->|        |
+|  |  |  Gru  |<----| | |        | ---------->| Target |
+|  |  |       |     +-| | Minion | ---------->|        |
+|  |  +-------+       +-|        |  |  |      +--------+
+|  |     ^ |            +--------+  |  |
+|  +-----|-|------------------------+  |
++--------|-|---------------------------+
+         | |
+    .jmx | | .log/.jtl
+         | v
+     +----------+
+     |          |
+     |   Lucy   |
+     |          |
+     +----------+
 ```
 
 *Lucy* runs the `lucy.sh` script to perform the following steps:
-* Step 1 - Create an ECS Cluster
-* Step 2 - Create all instances and register them with the Cluster
-* Step 3 - Create the Minion ECS task
-* Step 4 - Wait until the instances are running and registered with the Cluster
-* Step 5 - Fetch our Contatiner Instance IDs
-* Step 6 - Run a Minion Task with the requested instance count
-* Step 7 - Get public IP addresses from Gru and Minions
-* Step 8 - Run Gru with the specified JMX
-  * JMeter does its thing here
-  * Once complete, copy the jmeter.log and results.jtl files from Gru to Lucy
-* Step 9 - Stop all Tasks
-* Step 10 - Terminate all instances
-* Step 11 - Delete the cluster
+* Step 1 - Create 2 ECS Clusters
+* Step 2 - Fetch our Contatiner Instance IDs
+* Step 3 - Run a Minion Task with the requested instance count
+* Step 4 - Get IP addresses from Gru and Minions
+* Step 5 - Run Gru with the specified JMX
+* Step 6 - Fetch the results
+* Step 7 - Delete the clusters
 
 ### Volumes
 The `lucy` container uses 3 volumes:
@@ -129,6 +122,28 @@ docker-compose up
 Using the `docker-compose scale` command does not work as it creates hostnames like `minion_1`.  This causes an error in JMeter as it uses the hostname in URL form and sees the underscore as an illegal URL character.
 
 ## Notes
+The following required and optional environment variables are supported:
+
+| Variable | Required | Default | Notes |
+|---|---|---|---|
+|AWS_DEFAULT_REGION|Yes|None|AWS Region (e.g. us-east-1)|
+|AWS_ACCESS_KEY_ID|Yes|None|AWS Access Key|
+|AWS_SECRET_ACCESS_KEY|Yes|None|AWS Secret Key|
+|INPUT_JMX|Yes|None|File path of JMeter Test file to run (.jmx).  You can optionally specify this as the first command line option of `docker run`|
+|KEY_NAME|Yes|None|AWS Security Key Pair .pem file (do not specify the .pem extension)|
+|SECURITY_GROUP|Yes|None|AWS Secuirty group that allows ports 22,1099,50000,51000/tcp and 4445/udp from all ports (e.g. sg-12345678)|
+|SUBNET_ID|Yes|None|One or more Subnets that are assigned to your VPC|
+|VPC_ID||VPC assigned to SUBNET_ID|We dautomatically erive this from your SUBNET_ID|
+|JMETER_VERSION||latest|smithmicro/lucy Image tag.  See Docker Hub for [available versions](https://hub.docker.com/r/smithmicro/jmeter/tags/).|
+|INSTANCE_TYPE||t2.micro|To double your memory, pass t2.small|
+|MEM_LIMIT||950m|If you are using t2.small, set MEM_LIMIT to 1995m|
+|MINION_COUNT||2||
+|PEM_PATH||/keys|This must match your Volume map.  See Volume section above.|
+|MINION_CLUSTER_NAME||JMeterMinion|Name that appears in your AWS Cluster UI|
+|GRU_CLUSTER_NAME||JMeterGru|Name that appears in your AWS Cluster UI|
+|GRU_PRIVATE_IP||(blank)|Set to true if you would like to run Lucy within AWS.  See GitHub [Issue 8](https://github.com/smithmicro/jmeter-ecs/issues/8) for details.|
+
+## Notes
 This Docker image uses the Instance Metadata API documented here:
 * http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
 
@@ -137,6 +152,7 @@ To get the instance public hostname within the `entrypoint.sh` script, we call:
 
 For more information on JMeter Distributed Testing, see:
 * http://jmeter.apache.org/usermanual/remote-test.html
+
 
 ## Inspired by...
 https://en.wikipedia.org/wiki/Despicable_Me_2

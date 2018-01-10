@@ -12,14 +12,20 @@ ENV AWS_DEFAULT_REGION=
 
 # Install the AWS CLI
 RUN apk add --update --no-cache \
+    ca-certificates \
     openssh-client \
+    openssl \
     python \
     py-pip \
   && pip install \
     awscli
 
-# copy our entrypoint script and Task definition
-COPY lucy.sh minion.json /opt/jmeter/
+# Install the ECS CLI
+RUN wget -O /usr/local/bin/ecs-cli -q https://s3.amazonaws.com/amazon-ecs-cli/ecs-cli-linux-amd64-latest \
+  && chmod +x /usr/local/bin/ecs-cli
+
+# copy our entrypoint script and compose file for the Minions
+COPY lucy.sh lucy.yml /opt/jmeter/
 RUN chmod +x /opt/jmeter/lucy.sh
 
 WORKDIR /logs
