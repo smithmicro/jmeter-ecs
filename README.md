@@ -74,13 +74,14 @@ This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Min
 ```
 
 *Lucy* runs the `lucy.sh` script to perform the following steps:
-* Step 1 - Create 2 ECS Clusters
-* Step 2 - Fetch our Contatiner Instance IDs
+* Step 1 - Create the ECS Cluster
+* Step 2 - Wait for the cluster to have all container instances registered
 * Step 3 - Run a Minion Task with the requested instance count
-* Step 4 - Get IP addresses from Gru and Minions
-* Step 5 - Run Gru with the specified JMX
-* Step 6 - Fetch the results
-* Step 7 - Delete the clusters
+* Step 4 - Get Gru and Minion's instance ID's
+* Step 5 - Get IP addresses from Gru and Minions
+* Step 6 - Run Gru with the specified JMX
+* Step 7 - Fetch the results from Gru
+* Step 8 - Delete the cluster
 
 ### Volumes
 The `lucy` container uses 3 volumes:
@@ -139,8 +140,7 @@ The following required and optional environment variables are supported:
 |MEM_LIMIT||950m|If you are using t2.small, set MEM_LIMIT to 1995m|
 |MINION_COUNT||2||
 |PEM_PATH||/keys|This must match your Volume map.  See Volume section above.|
-|MINION_CLUSTER_NAME||JMeterMinion|Name that appears in your AWS Cluster UI|
-|GRU_CLUSTER_NAME||JMeterGru|Name that appears in your AWS Cluster UI|
+|CLUSTER_NAME||JMeter|Name that appears in your AWS Cluster UI|
 |GRU_PRIVATE_IP||(blank)|Set to true if you would like to run Lucy within AWS.  See GitHub [Issue 8](https://github.com/smithmicro/jmeter-ecs/issues/8) for details.|
 
 ## Notes
@@ -152,7 +152,6 @@ To get the instance public hostname within the `entrypoint.sh` script, we call:
 
 For more information on JMeter Distributed Testing, see:
 * http://jmeter.apache.org/usermanual/remote-test.html
-
 
 ## Inspired by...
 https://en.wikipedia.org/wiki/Despicable_Me_2
