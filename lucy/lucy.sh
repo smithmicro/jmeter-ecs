@@ -62,61 +62,51 @@ fi
 if [ "$PEM_PATH" == '' ]; then
   PEM_PATH=/keys
 fi
-if [ "$MINION_CLUSTER_NAME" == '' ]; then
-  MINION_CLUSTER_NAME=JMeterMinion
-fi
-if [ "$GRU_CLUSTER_NAME" == '' ]; then
-  GRU_CLUSTER_NAME=JMeterGru
+if [ "$CLUSTER_NAME" == '' ]; then
+  CLUSTER_NAME=JMeter
 fi
 if [ "$VPC_ID" == '' ]; then
   VPC_ID=$(aws ec2 describe-security-groups --group-ids $SECURITY_GROUP --query 'SecurityGroups[*].[VpcId]' --output text)
 fi
 
-# Step 1 - Create 2 ECS Clusters
+# Step 1 - Create our ECS Cluster with MINION_COUNT+1 instances
 ecs-cli --version
-echo "Creating cluster/$MINION_CLUSTER_NAME"
-ecs-cli up --cluster $MINION_CLUSTER_NAME --size $MINION_COUNT --capability-iam --instance-type $INSTANCE_TYPE --keypair $KEY_NAME \
-  --security-group $SECURITY_GROUP --vpc $VPC_ID --subnets $SUBNET_ID --force --verbose
-echo "Creating cluster/$GRU_CLUSTER_NAME"
-ecs-cli up --cluster $GRU_CLUSTER_NAME --capability-iam --instance-type $INSTANCE_TYPE --keypair $KEY_NAME \
+echo "Creating cluster/$CLUSTER_NAME"
+INSTANCE_COUNT=$((MINION_COUNT+1))
+ecs-cli up --cluster $CLUSTER_NAME --size $INSTANCE_COUNT --capability-iam --instance-type $INSTANCE_TYPE --keypair $KEY_NAME \
   --security-group $SECURITY_GROUP --vpc $VPC_ID --subnets $SUBNET_ID --force --verbose
 
-# Step 2 - Fetch our Contatiner Instance IDs
-while [ "$MINION_CONTAINER_INSTANCE_IDS" = '' ]
-do
-  MINION_CONTAINER_INSTANCE_IDS=$(aws ecs list-container-instances --cluster $MINION_CLUSTER_NAME --output text |
-      awk '{print $2}' | tr '\n' ' ')
-  if [ "$MINION_CONTAINER_INSTANCE_IDS" == '' ]; then
-    echo "Waiting for Minion container instance IDs.."
-    sleep 5
+# Step 2 - Wait for the cluster to have all container instances registered
+while true; do
+  CONTAINER_INSTANCE_COUNT=$(aws ecs describe-clusters --cluster $CLUSTER_NAME \
+    --query 'clusters[*].[registeredContainerInstancesCount]' --output text)
+  echo "Instance count is $CONTAINER_INSTANCE_COUNT"
+  if [ "$CONTAINER_INSTANCE_COUNT" == $INSTANCE_COUNT ]; then
+    break
   fi
+  sleep 10
 done
-echo "Minion container instances IDs: $MINION_CONTAINER_INSTANCE_IDS"
-MINION_INSTANCE_IDS=$(aws ecs describe-container-instances --cluster $MINION_CLUSTER_NAME \
-    --container-instances $MINION_CONTAINER_INSTANCE_IDS --query 'containerInstances[*].[ec2InstanceId]' --output text)
-echo "Minion instances IDs: $MINION_INSTANCE_IDS"
-
-while [ "$GRU_CONTAINER_INSTANCE_ID" = '' ]
-do
-  GRU_CONTAINER_INSTANCE_ID=$(aws ecs list-container-instances --cluster $GRU_CLUSTER_NAME --output text |
-      awk '{print $2}' | tr '\n' ' ')
-  if [ "$GRU_CONTAINER_INSTANCE_ID" == '' ]; then
-    echo "Waiting for Gru container instance ID..."
-    sleep 5
-  fi
-done
-echo "Gru container instances ID: $GRU_CONTAINER_INSTANCE_ID"
-GRU_INSTANCE_ID=$(aws ecs describe-container-instances --cluster $GRU_CLUSTER_NAME \
-    --container-instances $GRU_CONTAINER_INSTANCE_ID --query 'containerInstances[*].[ec2InstanceId]' --output text)
-echo "Gru instances ID: $GRU_INSTANCE_ID"
 
 # Step 3 - Run the Minion task with the requested JMeter version, instance count and memory
 sed -i 's/jmeter:latest/jmeter:'"$JMETER_VERSION"'/' /opt/jmeter/lucy.yml
 sed -i 's/950m/'"$MEM_LIMIT"'/' /opt/jmeter/lucy.yml
-ecs-cli compose --file /opt/jmeter/lucy.yml up --cluster $MINION_CLUSTER_NAME
-ecs-cli compose --file /opt/jmeter/lucy.yml --cluster $MINION_CLUSTER_NAME scale $MINION_COUNT
+ecs-cli compose --file /opt/jmeter/lucy.yml up --cluster $CLUSTER_NAME
+ecs-cli compose --file /opt/jmeter/lucy.yml --cluster $CLUSTER_NAME scale $MINION_COUNT
 
-# Step 4 - Get IP addresses from Gru (Public or Private) and Minions (always Private)
+# Step 4 - Get Gru and Minion's instance ID's.  Gru is the container with a runningTasksCount = 0
+CONTAINER_INSTANCE_IDS=$(aws ecs list-container-instances --cluster $CLUSTER_NAME --output text |
+      awk '{print $2}' | tr '\n' ' ')
+echo "Container instances IDs: $CONTAINER_INSTANCE_IDS"
+
+GRU_INSTANCE_ID=$(aws ecs describe-container-instances --cluster $CLUSTER_NAME \
+  --container-instances $CONTAINER_INSTANCE_IDS --query 'containerInstances[*].[ec2InstanceId,runningTasksCount]' --output text | grep '\t0' | awk '{print $1}')
+echo "Gru instance ID: $GRU_INSTANCE_ID"
+
+MINION_INSTANCE_IDS=$(aws ecs describe-container-instances --cluster $CLUSTER_NAME \
+  --container-instances $CONTAINER_INSTANCE_IDS --query 'containerInstances[*].[ec2InstanceId,runningTasksCount]' --output text | grep '\t1' | awk '{print $1}')
+echo "Minion instances IDs: $MINION_INSTANCE_IDS"
+
+# Step 5 - Get IP addresses from Gru (Public or Private) and Minions (always Private)
 if [ "$GRU_PRIVATE_IP" = '' ]; then
   GRU_HOST=$(aws ec2 describe-instances --instance-ids $GRU_INSTANCE_ID \
       --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text | tr -d '\n')
@@ -133,7 +123,7 @@ echo "Minions at $MINION_HOSTS"
 # uncomment if you want to pause Lucy to inspect Gru or a Minion
 #read -p "Press enter to start Gru setup: "
 
-# Step 5 - Run Gru with the specified JMX
+# Step 6 - Run Gru with the specified JMX
 echo "Copying $INPUT_JMX to Gru"
 scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $INPUT_JMX ec2-user@${GRU_HOST}:/tmp
 
@@ -142,14 +132,12 @@ JMX_IN_COMTAINER=/plans/$(basename $INPUT_JMX)
 ssh -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST} \
  "docker run -p 1099:1099 -p 51000:51000 -v /tmp:/plans -v /logs:/logs --env MINION_HOSTS=$MINION_HOSTS smithmicro/jmeter:$JMETER_VERSION $JMX_IN_COMTAINER"
 
-# Step 6 - Fetch the results
+# Step 6 - Fetch the results from Gru
 echo "Copying results from Gru"
 scp -r -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST}:/logs/* /logs
 
-# Step 7 - Delete the clusters
-echo "Deleting cluster/$MINION_CLUSTER_NAME"
-ecs-cli down --cluster $MINION_CLUSTER_NAME --force
-echo "Deleting cluster/$GRU_CLUSTER_NAME"
-ecs-cli down --cluster $GRU_CLUSTER_NAME --force
+# Step 7 - Delete the cluster
+echo "Deleting cluster/$CLUSTER_NAME"
+ecs-cli down --cluster $CLUSTER_NAME --force
 
 echo "Complete"
