@@ -2,7 +2,7 @@ FROM openjdk:8-alpine
 
 LABEL maintainer="David Sperling <dsperling@smithmicro.com>"
 
-ENV JMETER_VERSION apache-jmeter-4.0
+ENV JMETER_VERSION apache-jmeter-3.3
 ENV JMETER_HOME /opt/$JMETER_VERSION
 ENV PATH $JMETER_HOME/bin:$PATH
 
