@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Create a VPC, Subnet, and Security Group required by jmeter-ecs
 
