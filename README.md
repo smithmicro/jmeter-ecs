@@ -28,7 +28,7 @@ docker run -v <oath to jmx>:/plans -v <path to pem>:/keys -v <path to logs>:/log
     --env AWS_SECRET_ACCESS_KEY=<access key> \
     --env AWS_DEFAULT_REGION=<region> \
     --env SECURITY_GROUP=<security group within your VPC> \
-    --env SUBNET_ID=<subnet ID within your VPC> \
+    --env SUBNET_ID=<subnet IDs within your VPC> \
     --env KEY_NAME=<key pair name without extension> \
     --env MINION_COUNT=<number of minions> \
     smithmicro/lucy /plans/demo.jmx
@@ -40,7 +40,7 @@ docker run -v $PWD/plans:/plans -v $PWD/keys:/keys -v $PWD/logs:/logs \
     --env AWS_SECRET_ACCESS_KEY=abcdefghijklmnopqrstuvwxyz0123456789ABCDEF \
     --env AWS_DEFAULT_REGION=us-east-1 \
     --env SECURITY_GROUP=sg-12345678 \
-    --env SUBNET_ID=subnet-12345678 \
+    --env SUBNET_ID=subnet-12345678,subnet-87654321 \
     --env KEY_NAME=jmeter-key \
     --env MINION_COUNT=5 \
     smithmicro/lucy /plans/demo.jmx
@@ -89,45 +89,12 @@ The `lucy` container uses 3 volumes:
 * `/keys` - mapped into the orchestrator to provide the PEM file
 * `/logs` - mapped into the orchestrator to provide the output jmeter.log and results.jtl
 
-## Local Testing with Docker Compose
-The `jmeter/docker-compose.yml` file allows for local testing of the Gru and Minion nodes without incurring costs from AWS.
-Edit the docker-compose.yml file and replicate the `links`, `environment` and `minionN` sections to increase the number of Minions to test.
-```
-version: '2'
-
-services:
-  gru:
-    ...
-    links: 
-      - minion1
-      - minion2
-      - minion3
-      - minion4
-    environment: 
-      - MINION_HOSTS=minion1,minion2,minion3,minion4
-    ...
-  minion1:
-    image: smithmicro/jmeter:latest
-  minion2:
-    image: smithmicro/jmeter:latest
-  minion3:
-    image: smithmicro/jmeter:latest
-  minion4:
-    image: smithmicro/jmeter:latest
-
-```
-Then run:
-```
-docker-compose up
-```
-Using the `docker-compose scale` command does not work as it creates hostnames like `minion_1`.  This causes an error in JMeter as it uses the hostname in URL form and sees the underscore as an illegal URL character.
-
 ## Environment Variables
 The following required and optional environment variables are supported:
 
 | Variable | Required | Default | Notes |
 |---|---|---|---|
-|AWS_DEFAULT_REGION|Yes|None|AWS Region (e.g. us-east-1)|
+|AWS_DEFAULT_REGION|Yes|None|AWS Region (e.g. `us-east-1`)|
 |AWS_ACCESS_KEY_ID|Yes|None|AWS Access Key|
 |AWS_SECRET_ACCESS_KEY|Yes|None|AWS Secret Key|
 |INPUT_JMX|Yes|None|File path of JMeter Test file to run (.jmx).  You can optionally specify this as the first command line option of `docker run`|
@@ -136,20 +103,16 @@ The following required and optional environment variables are supported:
 |SUBNET_ID|Yes|None|One or more Subnets (comma separated) that are assigned to your VPC|
 |VPC_ID||VPC assigned to SUBNET_ID|We dautomatically erive this from your SUBNET_ID|
 |JMETER_VERSION||latest|smithmicro/lucy Image tag.  See Docker Hub for [available versions](https://hub.docker.com/r/smithmicro/jmeter/tags/).|
-|INSTANCE_TYPE||t2.micro|To double your memory, pass t2.small|
-|MEM_LIMIT||950m|If you are using t2.small, set MEM_LIMIT to 1995m|
+|INSTANCE_TYPE||t2.micro|To double your memory, pass `t2.small`|
+|MEM_LIMIT||950m|If you are using t2.small, set MEM_LIMIT to `1995m`|
 |MINION_COUNT||2||
 |PEM_PATH||/keys|This must match your Volume map.  See Volume section above.|
 |CLUSTER_NAME||JMeter|Name that appears in your AWS Cluster UI|
-|GRU_PRIVATE_IP||(blank)|Set to true if you would like to run Lucy within AWS.  See GitHub [Issue 8](https://github.com/smithmicro/jmeter-ecs/issues/8) for details.|
+|GRU_PRIVATE_IP||None|Set to `true` if you would like to run Lucy within AWS.  See GitHub [Issue 8](https://github.com/smithmicro/jmeter-ecs/issues/8) for details.|
+|JMETER_FLAGS||None|Custom JMeter command line options.  For example, passing `-X` will tell the Minion to exit at the end of the test|
+|RETAIN_CLUSTER||None|Set to `true` if you want to re-use your cluster for future tests.  Warning, you will incur AWS charges if you leave your cluster running.|
 
 ## Notes
-This Docker image uses the Instance Metadata API documented here:
-* http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
-
-To get the instance public hostname within the `entrypoint.sh` script, we call:
-* `curl -s --max-time 5 http://169.254.169.254/latest/meta-data/public-hostname`
-
 For more information on JMeter Distributed Testing, see:
 * http://jmeter.apache.org/usermanual/remote-test.html
 

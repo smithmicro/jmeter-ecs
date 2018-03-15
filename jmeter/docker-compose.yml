@@ -1,5 +1,9 @@
 version: '2'
 
+# This compose file allows for local testing of the Gru and Minion nodes without incurring 
+# costs from AWS.  Edit the docker-compose.yml file and replicate the links, environment 
+# and minionN sections to increase the number of Minions to test.
+
 services:
   gru:
     build: .

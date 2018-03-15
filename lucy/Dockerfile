@@ -1,4 +1,4 @@
-FROM alpine:3.5
+FROM alpine:3.7
 
 LABEL maintainer="David Sperling <dsperling@smithmicro.com>"
 
@@ -9,6 +9,7 @@ ENV JMETER_FLAGS=
 ENV AWS_ACCESS_KEY_ID=
 ENV AWS_SECRET_ACCESS_KEY=
 ENV AWS_DEFAULT_REGION=
+ENV RETAIN_CLUSTER=
 
 # Install the AWS CLI
 RUN apk add --update --no-cache \

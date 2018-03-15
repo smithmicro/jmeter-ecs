@@ -71,10 +71,20 @@ fi
 
 # Step 1 - Create our ECS Cluster with MINION_COUNT+1 instances
 ecs-cli --version
-echo "Creating cluster/$CLUSTER_NAME"
+echo "Detecting existing cluster/$CLUSTER_NAME"
 INSTANCE_COUNT=$((MINION_COUNT+1))
-ecs-cli up --cluster $CLUSTER_NAME --size $INSTANCE_COUNT --capability-iam --instance-type $INSTANCE_TYPE --keypair $KEY_NAME \
-  --security-group $SECURITY_GROUP --vpc $VPC_ID --subnets $SUBNET_ID --force --verbose
+CONTAINER_INSTANCE_COUNT=$(aws ecs describe-clusters --cluster $CLUSTER_NAME \
+  --query 'clusters[*].[registeredContainerInstancesCount]' --output text)
+if [ "$CONTAINER_INSTANCE_COUNT" == $INSTANCE_COUNT ]; then
+  echo "Using existing cluster/$CLUSTER_NAME"
+else
+  if [ "$CONTAINER_INSTANCE_COUNT" != '0' ]; then
+    echo "Instance count is $CONTAINER_INSTANCE_COUNT, but requested instance count is $INSTANCE_COUNT"
+  fi
+  echo "Creating cluster/$CLUSTER_NAME"
+  ecs-cli up --cluster $CLUSTER_NAME --size $INSTANCE_COUNT --capability-iam --instance-type $INSTANCE_TYPE --keypair $KEY_NAME \
+    --security-group $SECURITY_GROUP --vpc $VPC_ID --subnets $SUBNET_ID --force --verbose
+fi
 
 # Step 2 - Wait for the cluster to have all container instances registered
 while true; do
@@ -107,7 +117,7 @@ MINION_INSTANCE_IDS=$(aws ecs describe-container-instances --cluster $CLUSTER_NA
 echo "Minion instances IDs: $MINION_INSTANCE_IDS"
 
 # Step 5 - Get IP addresses from Gru (Public or Private) and Minions (always Private)
-if [ "$GRU_PRIVATE_IP" = '' ]; then
+if [ "$GRU_PRIVATE_IP" == '' ]; then
   GRU_HOST=$(aws ec2 describe-instances --instance-ids $GRU_INSTANCE_ID \
       --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text | tr -d '\n')
 else
@@ -137,7 +147,10 @@ echo "Copying results from Gru"
 scp -r -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST}:/logs/* /logs
 
 # Step 7 - Delete the cluster
-echo "Deleting cluster/$CLUSTER_NAME"
-ecs-cli down --cluster $CLUSTER_NAME --force
-
+if [ "$RETAIN_CLUSTER" == '' ]; then
+  echo "Deleting cluster/$CLUSTER_NAME"
+  ecs-cli down --cluster $CLUSTER_NAME --force
+else
+  echo "cluster/$CLUSTER_NAME is retained upon request."
+fi
 echo "Complete"

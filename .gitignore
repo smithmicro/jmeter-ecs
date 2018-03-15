@@ -1,3 +1,5 @@
 .vscode
-logs
+logs/
 *.jmx
+test/
+*.xcworkspace/
