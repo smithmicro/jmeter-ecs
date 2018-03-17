@@ -5,6 +5,8 @@ LABEL maintainer="David Sperling <dsperling@smithmicro.com>"
 ENV JMETER_VERSION apache-jmeter-4.0
 ENV JMETER_HOME /opt/$JMETER_VERSION
 ENV PATH $JMETER_HOME/bin:$PATH
+ENV CMDRUNNER_VERSION 2.0
+ENV PLUGINMGR_VERSION 0.19
 
 # overridable environment variables
 ENV RESULTS_LOG results.jtl
@@ -18,20 +20,26 @@ RUN apk add --update --no-cache \
 
 WORKDIR /opt
 
-# install JMeter and a few Plugins
+# install JMeter, the JMeter Plugins Manager and all available plugins
 RUN curl -O https://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz \
   && tar -xvf $JMETER_VERSION.tgz \
   && rm $JMETER_VERSION.tgz \
   && rm -rf $JMETER_VERSION/docs $JMETER_VERSION/printable_docs \
+  && cd $JMETER_HOME \
   && curl -O https://jmeter-plugins.org/files/JMeterPlugins-Standard-1.4.0.zip \
     -O https://jmeter-plugins.org/files/JMeterPlugins-Extras-1.4.0.zip \
     -O https://jmeter-plugins.org/files/JMeterPlugins-ExtrasLibs-1.4.0.zip \
   && unzip -n '*.zip' \
-  && rm *.zip
+  && rm *.zip \
+  && cd $JMETER_HOME/lib \
+  && curl -O http://search.maven.org/remotecontent?filepath=kg/apc/cmdrunner/$CMDRUNNER_VERSION/cmdrunner-$CMDRUNNER_VERSION.jar \
+  && cd $JMETER_HOME/lib/ext \
+  && curl -O http://search.maven.org/remotecontent?filepath=kg/apc/jmeter-plugins-manager/$PLUGINMGR_VERSION/jmeter-plugins-manager-$PLUGINMGR_VERSION.jar \
+  && java -cp jmeter-plugins-manager-$PLUGINMGR_VERSION.jar org.jmeterplugins.repository.PluginManagerCMDInstaller \
+  && PluginsManagerCMD.sh install-all-except
 
 # copy our entrypoint
 COPY entrypoint.sh /opt/jmeter/
-RUN chmod +x /opt/jmeter/entrypoint.sh
 
 WORKDIR /logs
 
