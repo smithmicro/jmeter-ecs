@@ -4,7 +4,7 @@ LABEL maintainer="David Sperling <dsperling@smithmicro.com>"
 
 ENV JMETER_VERSION apache-jmeter-2.13
 ENV JMETER_HOME /opt/$JMETER_VERSION
-ENV PATH $JMETER_HOME/bin:$PATH
+ENV PATH $PATH:$JMETER_HOME/bin
 
 # overridable environment variables
 ENV RESULTS_LOG results.jtl
@@ -23,6 +23,7 @@ RUN curl -O https://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz 
   && tar -xvf $JMETER_VERSION.tgz \
   && rm $JMETER_VERSION.tgz \
   && rm -rf $JMETER_VERSION/docs $JMETER_VERSION/printable_docs \
+  && cd $JMETER_HOME \
   && curl -O https://jmeter-plugins.org/files/JMeterPlugins-Standard-1.4.0.zip \
     -O https://jmeter-plugins.org/files/JMeterPlugins-Extras-1.4.0.zip \
     -O https://jmeter-plugins.org/files/JMeterPlugins-ExtrasLibs-1.4.0.zip \
@@ -31,11 +32,10 @@ RUN curl -O https://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz 
 
 # copy our entrypoint
 COPY entrypoint.sh /opt/jmeter/
-RUN chmod +x /opt/jmeter/entrypoint.sh
 
 WORKDIR /logs
 
-EXPOSE 1099 4445 50000 51000
+EXPOSE 1099 50000 51000 4445/udp
 
 # default command in the entrypoint is 'minion'
 ENTRYPOINT ["/opt/jmeter/entrypoint.sh"]
