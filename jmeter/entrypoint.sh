@@ -22,10 +22,10 @@ if [ ${1##*.} = 'jmx' ]; then
     echo "Using Gru AWS Public HOSTNAME $HOSTNAME"
   fi
   # empty the logs directory, or jmeter may fail
-  rm -rf /logs/report /logs/*.log
+  rm -rf /logs/report /logs/*.log /logs/*.jtl
 
   # set JAVA HEAP
-  sed -i 's/-Xms1g -Xmx1g -XX:MaxMetaspaceSize=256m/-Xms750m -Xmx750m/' $JMETER_HOME/bin/jmeter
+  sed -i 's/-Xms1g -Xmx1g -XX:MaxMetaspaceSize=256m/'"$JMETER_MEMORY"'/' $JMETER_HOME/bin/jmeter
 
   # run jmeter in client (gru) mode
   exec jmeter -n $JMETER_FLAGS \
@@ -53,8 +53,15 @@ if [ "$1" = 'minion' ]; then
     echo "Using Minion AWS Public HOSTNAME $HOSTNAME"
   fi
 
-   # set JAVA HEAP
-  sed -i 's/-Xms1g -Xmx1g -XX:MaxMetaspaceSize=256m/-Xms750m -Xmx750m/' $JMETER_HOME/bin/jmeter
+  # set JAVA HEAP
+  sed -i 's/-Xms1g -Xmx1g -XX:MaxMetaspaceSize=256m/'"$JMETER_MEMORY"'/' $JMETER_HOME/bin/jmeter
+
+  # install custom plugin if requested
+  if [ "$CUSTOM_PLUGIN_URL" != '' ]; then
+    echo "Installing custom plugin $CUSTOM_PLUGIN_URL"
+    CUSTOM_PLUGIN_FILE="${CUSTOM_PLUGIN_URL##*/}"
+    curl -o $JMETER_HOME/lib/ext/$CUSTOM_PLUGIN_FILE $CUSTOM_PLUGIN_URL
+  fi
 
   # run jmeter in server (minion) mode
   exec jmeter-server -n \

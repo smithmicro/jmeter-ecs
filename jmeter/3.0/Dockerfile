@@ -11,6 +11,8 @@ ENV PLUGINMGR_VERSION 0.19
 # overridable environment variables
 ENV RESULTS_LOG results.jtl
 ENV JMETER_FLAGS=
+ENV JMETER_MEMORY -Xms800m -Xmx800m
+ENV CUSTOM_PLUGIN_URL=
 
 # Install the required tools for JMeter
 RUN apk add --update --no-cache \
@@ -19,7 +21,7 @@ RUN apk add --update --no-cache \
 
 WORKDIR /opt
 
-# install JMeter, the JMeter Plugins Manager and all available plugins
+# install JMeter and the JMeter Plugins Manager
 RUN curl -O https://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz \
   && tar -xvf $JMETER_VERSION.tgz \
   && rm $JMETER_VERSION.tgz \
@@ -28,8 +30,12 @@ RUN curl -O https://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz 
   && curl -O http://search.maven.org/remotecontent?filepath=kg/apc/cmdrunner/$CMDRUNNER_VERSION/cmdrunner-$CMDRUNNER_VERSION.jar \
   && cd $JMETER_HOME/lib/ext \
   && curl -O http://search.maven.org/remotecontent?filepath=kg/apc/jmeter-plugins-manager/$PLUGINMGR_VERSION/jmeter-plugins-manager-$PLUGINMGR_VERSION.jar \
-  && java -cp jmeter-plugins-manager-$PLUGINMGR_VERSION.jar org.jmeterplugins.repository.PluginManagerCMDInstaller \
-  && PluginsManagerCMD.sh install-all-except
+  && java -cp jmeter-plugins-manager-$PLUGINMGR_VERSION.jar org.jmeterplugins.repository.PluginManagerCMDInstaller
+
+# install all available plugins except for those that are dated
+RUN PluginsManagerCMD.sh install-all-except jpgc-hadoop \
+  && PluginsManagerCMD.sh install-all-except jpgc-hadoop \
+  && PluginsManagerCMD.sh status
 
 # copy our entrypoint
 COPY entrypoint.sh /opt/jmeter/

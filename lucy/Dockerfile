@@ -10,6 +10,7 @@ ENV AWS_ACCESS_KEY_ID=
 ENV AWS_SECRET_ACCESS_KEY=
 ENV AWS_DEFAULT_REGION=
 ENV RETAIN_CLUSTER=
+ENV CUSTOM_PLUGIN_URL=
 
 # Install the AWS CLI
 RUN apk add --update --no-cache \
@@ -27,7 +28,6 @@ RUN wget -O /usr/local/bin/ecs-cli -q https://s3.amazonaws.com/amazon-ecs-cli/ec
 
 # copy our entrypoint script and compose file for the Minions
 COPY lucy.sh lucy.yml /opt/jmeter/
-RUN chmod +x /opt/jmeter/lucy.sh
 
 WORKDIR /logs
 

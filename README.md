@@ -111,8 +111,11 @@ The following required and optional environment variables are supported:
 |GRU_PRIVATE_IP||None|Set to `true` if you would like to run Lucy within AWS.  See GitHub [Issue 8](https://github.com/smithmicro/jmeter-ecs/issues/8) for details.|
 |JMETER_FLAGS||None|Custom JMeter command line options.  For example, passing `-X` will tell the Minion to exit at the end of the test|
 |RETAIN_CLUSTER||None|Set to `true` if you want to re-use your cluster for future tests.  Warning, you will incur AWS charges if you leave your cluster running.|
+|CUSTOM_PLUGIN_URL||None|The URL of a custom plugin you want to install in the Minions.  File will be copied to $JMETER_HOME/lib/ext.||
 
 ## Notes
+All current JMeter Plugins are installed via the Plugins Manager.
+* https://jmeter-plugins.org/wiki/PluginsManager/
 For more information on JMeter Distributed Testing, see:
 * http://jmeter.apache.org/usermanual/remote-test.html
 

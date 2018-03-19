@@ -100,6 +100,7 @@ done
 # Step 3 - Run the Minion task with the requested JMeter version, instance count and memory
 sed -i 's/jmeter:latest/jmeter:'"$JMETER_VERSION"'/' /opt/jmeter/lucy.yml
 sed -i 's/950m/'"$MEM_LIMIT"'/' /opt/jmeter/lucy.yml
+sed -i 's/CUSTOM_PLUGIN_URL=/CUSTOM_PLUGIN_URL='"$CUSTOM_PLUGIN_URL"'/' /opt/jmeter/lucy.yml
 ecs-cli compose --file /opt/jmeter/lucy.yml up --cluster $CLUSTER_NAME
 ecs-cli compose --file /opt/jmeter/lucy.yml --cluster $CLUSTER_NAME scale $MINION_COUNT
 
