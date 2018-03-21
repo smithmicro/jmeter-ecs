@@ -110,7 +110,7 @@ CONTAINER_INSTANCE_IDS=$(aws ecs list-container-instances --cluster $CLUSTER_NAM
 echo "Container instances IDs: $CONTAINER_INSTANCE_IDS"
 
 GRU_INSTANCE_ID=$(aws ecs describe-container-instances --cluster $CLUSTER_NAME \
-  --container-instances $CONTAINER_INSTANCE_IDS --query 'containerInstances[*].[ec2InstanceId,runningTasksCount]' --output text | grep '\t0' | awk '{print $1}')
+  --container-instances $CONTAINER_INSTANCE_IDS --query 'containerInstances[*].[ec2InstanceId,runningTasksCount]' --output text | grep -m 1 '\t0' | awk '{print $1}')
 echo "Gru instance ID: $GRU_INSTANCE_ID"
 
 MINION_INSTANCE_IDS=$(aws ecs describe-container-instances --cluster $CLUSTER_NAME \

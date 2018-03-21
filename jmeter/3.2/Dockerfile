@@ -32,9 +32,9 @@ RUN curl -O https://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz 
   && curl -O http://search.maven.org/remotecontent?filepath=kg/apc/jmeter-plugins-manager/$PLUGINMGR_VERSION/jmeter-plugins-manager-$PLUGINMGR_VERSION.jar \
   && java -cp jmeter-plugins-manager-$PLUGINMGR_VERSION.jar org.jmeterplugins.repository.PluginManagerCMDInstaller
 
-# install all available plugins except for those that are dated
-RUN PluginsManagerCMD.sh install-all-except jpgc-hadoop \
-  && PluginsManagerCMD.sh install-all-except jpgc-hadoop \
+# install all available plugins except for those that are deprecated
+RUN PluginsManagerCMD.sh install-all-except jpgc-hadoop,jpgc-oauth \
+  && PluginsManagerCMD.sh install-all-except jpgc-hadoop,jpgc-oauth \
   && PluginsManagerCMD.sh status
 
 # copy our entrypoint

@@ -105,6 +105,7 @@ The following required and optional environment variables are supported:
 |JMETER_VERSION||latest|smithmicro/lucy Image tag.  See Docker Hub for [available versions](https://hub.docker.com/r/smithmicro/jmeter/tags/).|
 |INSTANCE_TYPE||t2.micro|To double your memory, pass `t2.small`|
 |MEM_LIMIT||950m|If you are using t2.small, set MEM_LIMIT to `1995m`|
+|JMETER_MEMORY||-Xms800m -Xmx800m|If you are using t2.small, set JMETER_MEMORY to `Xms1600m -Xmx1600m`|
 |MINION_COUNT||2||
 |PEM_PATH||/keys|This must match your Volume map.  See Volume section above.|
 |CLUSTER_NAME||JMeter|Name that appears in your AWS Cluster UI|
@@ -116,6 +117,7 @@ The following required and optional environment variables are supported:
 ## Notes
 All current JMeter Plugins are installed via the Plugins Manager.
 * https://jmeter-plugins.org/wiki/PluginsManager/
+
 For more information on JMeter Distributed Testing, see:
 * http://jmeter.apache.org/usermanual/remote-test.html
 
