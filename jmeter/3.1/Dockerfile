@@ -34,7 +34,7 @@ RUN curl -O https://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz 
 
 # install all available plugins except for those that are deprecated
 RUN PluginsManagerCMD.sh install-all-except jpgc-hadoop,jpgc-oauth \
-  && PluginsManagerCMD.sh install-all-except jpgc-hadoop,jpgc-oauth \
+  && sleep 2 \
   && PluginsManagerCMD.sh status
 
 # copy our entrypoint
