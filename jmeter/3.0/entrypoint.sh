@@ -21,13 +21,20 @@ if [ ${1##*.} = 'jmx' ]; then
     HOSTNAME=$PUBLIC_HOSTNAME
     echo "Using Gru AWS Public HOSTNAME $HOSTNAME"
   fi
+  # empty the logs directory, or jmeter may fail
+  rm -rf /logs/report /logs/*.log /logs/*.jtl
+
+  # set JAVA HEAP
+  sed -i 's/-Xms512m -Xmx512m/'"$JMETER_MEMORY"'/g' $JMETER_HOME/bin/jmeter
+
   # run jmeter in client (gru) mode
   exec jmeter -n $JMETER_FLAGS \
     -R $MINION_HOSTS \
     -Dclient.rmi.localport=51000 \
     -Djava.rmi.server.hostname=${PUBLIC_HOSTNAME} \
     -l $RESULTS_LOG \
-    -t $1
+    -t $1 \
+    -e -o /logs/report
 
 fi
 
@@ -44,6 +51,17 @@ if [ "$1" = 'minion' ]; then
     HOSTNAME=$PUBLIC_HOSTNAME
     echo "Using Minion AWS Public HOSTNAME $HOSTNAME"
   fi
+
+  # set JAVA HEAP
+  sed -i 's/-Xms512m -Xmx512m/'"$JMETER_MEMORY"'/g' $JMETER_HOME/bin/jmeter
+
+  # install custom plugin if requested
+  if [ "$CUSTOM_PLUGIN_URL" != '' ]; then
+    echo "Installing custom plugin $CUSTOM_PLUGIN_URL"
+    CUSTOM_PLUGIN_FILE="${CUSTOM_PLUGIN_URL##*/}"
+    curl -o $JMETER_HOME/lib/ext/$CUSTOM_PLUGIN_FILE $CUSTOM_PLUGIN_URL
+  fi
+
   # run jmeter in server (minion) mode
   exec jmeter-server -n \
     -Dserver.rmi.localport=50000 \

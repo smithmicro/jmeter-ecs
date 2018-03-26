@@ -100,6 +100,7 @@ done
 # Step 3 - Run the Minion task with the requested JMeter version, instance count and memory
 sed -i 's/jmeter:latest/jmeter:'"$JMETER_VERSION"'/' /opt/jmeter/lucy.yml
 sed -i 's/950m/'"$MEM_LIMIT"'/' /opt/jmeter/lucy.yml
+sed -i 's/CUSTOM_PLUGIN_URL=/CUSTOM_PLUGIN_URL='"$CUSTOM_PLUGIN_URL"'/' /opt/jmeter/lucy.yml
 ecs-cli compose --file /opt/jmeter/lucy.yml up --cluster $CLUSTER_NAME
 ecs-cli compose --file /opt/jmeter/lucy.yml --cluster $CLUSTER_NAME scale $MINION_COUNT
 
@@ -109,7 +110,7 @@ CONTAINER_INSTANCE_IDS=$(aws ecs list-container-instances --cluster $CLUSTER_NAM
 echo "Container instances IDs: $CONTAINER_INSTANCE_IDS"
 
 GRU_INSTANCE_ID=$(aws ecs describe-container-instances --cluster $CLUSTER_NAME \
-  --container-instances $CONTAINER_INSTANCE_IDS --query 'containerInstances[*].[ec2InstanceId,runningTasksCount]' --output text | grep '\t0' | awk '{print $1}')
+  --container-instances $CONTAINER_INSTANCE_IDS --query 'containerInstances[*].[ec2InstanceId,runningTasksCount]' --output text | grep -m 1 '\t0' | awk '{print $1}')
 echo "Gru instance ID: $GRU_INSTANCE_ID"
 
 MINION_INSTANCE_IDS=$(aws ecs describe-container-instances --cluster $CLUSTER_NAME \

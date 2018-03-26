@@ -21,6 +21,8 @@ if [ ${1##*.} = 'jmx' ]; then
     HOSTNAME=$PUBLIC_HOSTNAME
     echo "Using Gru AWS Public HOSTNAME $HOSTNAME"
   fi
+  # empty the logs directory, or jmeter may fail
+  rm /logs/*.log /logs/*.jtl
   # run jmeter in client (gru) mode
   exec jmeter -n $JMETER_FLAGS \
     -R $MINION_HOSTS \
