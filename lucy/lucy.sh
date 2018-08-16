@@ -68,6 +68,9 @@ fi
 if [ "$VPC_ID" == '' ]; then
   VPC_ID=$(aws ec2 describe-security-groups --group-ids $SECURITY_GROUP --query 'SecurityGroups[*].[VpcId]' --output text)
 fi
+if [ "$IMAGE_ID" == '' ]; then
+  IMAGE_ID=ami-0291ba887ba0d515f
+fi
 
 # Step 1 - Create our ECS Cluster with MINION_COUNT+1 instances
 ecs-cli --version
@@ -83,7 +86,7 @@ else
   fi
   echo "Creating cluster/$CLUSTER_NAME"
   ecs-cli up --cluster $CLUSTER_NAME --size $INSTANCE_COUNT --capability-iam --instance-type $INSTANCE_TYPE --keypair $KEY_NAME \
-    --security-group $SECURITY_GROUP --vpc $VPC_ID --subnets $SUBNET_ID --force --verbose
+    --security-group $SECURITY_GROUP --vpc $VPC_ID --subnets $SUBNET_ID --image-id $IMAGE_ID --force --verbose
 fi
 
 # Step 2 - Wait for the cluster to have all container instances registered
