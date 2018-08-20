@@ -2,7 +2,7 @@ version: '2'
 
 services:
   minion:
-    image: smithmicro/jmeter:latest
+    image: psywolf/jmeter:latest
     mem_limit: 950m
     ports:
       - 1099:1099
