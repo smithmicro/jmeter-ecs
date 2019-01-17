@@ -122,7 +122,7 @@ if [ "$GRU_PRIVATE_IP" == '' ]; then
   GRU_HOST=$(aws ec2 describe-instances --instance-ids $GRU_INSTANCE_ID \
       --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text | tr -d '\n')
 else
-  cho "Using Gru's Private IP"
+  echo "Using Gru's Private IP"
   GRU_HOST=$(aws ec2 describe-instances --instance-ids $GRU_INSTANCE_ID \
       --query 'Reservations[*].Instances[*].[PrivateIpAddress]' --output text | tr -d '\n')
 fi
