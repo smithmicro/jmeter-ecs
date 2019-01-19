@@ -20,6 +20,9 @@ fi
 if [ "$OWNER" == '' ]; then
   OWNER=jmeter-ecs
 fi
+if [ "$AWS_REGION" == '' ]; then
+  AWS_REGION=$(aws configure get region)
+fi
 
 # keep the tags consistant so we can easily detect if a JMeter VPC already exists
 VPC_TAGS="Key=Name,Value=JMeter-VPC Key=Owner,Value=$OWNER Key=Stack,Value=JMeter"
@@ -43,10 +46,10 @@ echo "Created VPC $VPC_ID"
 # enable DNS hostnames
 aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames --output text
 
-# create a 2 subnets
-SUBNET_ID1=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block $SUBNET_CIDR_BLOCK1 \
+# create 2 subnets
+SUBNET_ID1=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block $SUBNET_CIDR_BLOCK1 --availability-zone "$AWS_REGION"a \
     --query 'Subnet.[SubnetId]' --output text | tr -d '\n')
-SUBNET_ID2=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block $SUBNET_CIDR_BLOCK2 \
+SUBNET_ID2=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block $SUBNET_CIDR_BLOCK2 --availability-zone "$AWS_REGION"b \
     --query 'Subnet.[SubnetId]' --output text | tr -d '\n')
 echo "Created Subnets $SUBNET_ID1,$SUBNET_ID2"
 

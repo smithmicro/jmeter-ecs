@@ -11,7 +11,6 @@ ENV PLUGINMGR_VERSION 1.3
 # overridable environment variables
 ENV RESULTS_LOG results.jtl
 ENV JMETER_FLAGS=
-ENV JMETER_MEMORY -Xms800m -Xmx800m
 ENV CUSTOM_PLUGIN_URL=
 
 # Install the required tools for JMeter
