@@ -128,24 +128,29 @@ else
 fi
 echo "Gru at $GRU_HOST"
 
-MINION_HOSTS=$(aws ec2 describe-instances --instance-ids $MINION_INSTANCE_IDS \
+if [ "$MINION_INSTANCE_IDS" == '' ]; then
+  echo "Error - no Minion instance IDs found."
+else
+  MINION_HOSTS=$(aws ec2 describe-instances --instance-ids $MINION_INSTANCE_IDS \
       --query 'Reservations[*].Instances[*].[PrivateIpAddress]' --output text | tr '\n' ',')
-echo "Minions at $MINION_HOSTS"
-# uncomment if you want to pause Lucy to inspect Gru or a Minion
-#read -p "Press enter to start Gru setup: "
 
-# Step 6 - Run Gru with the specified JMX
-echo "Copying $INPUT_JMX to Gru"
-scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $INPUT_JMX ec2-user@${GRU_HOST}:/tmp
+  echo "Minions at $MINION_HOSTS"
+  # uncomment if you want to pause Lucy to inspect Gru or a Minion
+  #read -p "Press enter to start Gru setup: "
 
-echo "Running Docker to start JMeter in Gru mode"
-JMX_IN_COMTAINER=/plans/$(basename $INPUT_JMX)
-ssh -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST} \
- "docker run -p 1099:1099 -p 51000:51000 -v /tmp:/plans -v /logs:/logs --env MINION_HOSTS=$MINION_HOSTS smithmicro/jmeter:$JMETER_VERSION $JMX_IN_COMTAINER"
+  # Step 6 - Run Gru with the specified JMX
+  echo "Copying $INPUT_JMX to Gru"
+  scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $INPUT_JMX ec2-user@${GRU_HOST}:/tmp
 
-# Step 6 - Fetch the results from Gru
-echo "Copying results from Gru"
-scp -r -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST}:/logs/* /logs
+  echo "Running Docker to start JMeter in Gru mode"
+  JMX_IN_COMTAINER=/plans/$(basename $INPUT_JMX)
+  ssh -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST} \
+  "docker run --network host -v /tmp:/plans -v /logs:/logs --env MINION_HOSTS=$MINION_HOSTS --env JMETER_FLAGS=$JMETER_FLAGS smithmicro/jmeter:$JMETER_VERSION $JMX_IN_COMTAINER"
+
+  # Step 6 - Fetch the results from Gru
+  echo "Copying results from Gru"
+  scp -r -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST}:/logs/* /logs
+fi
 
 # Step 7 - Delete the cluster
 if [ "$RETAIN_CLUSTER" == '' ]; then

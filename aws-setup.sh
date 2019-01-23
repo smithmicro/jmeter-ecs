@@ -81,7 +81,7 @@ aws ec2 modify-subnet-attribute --subnet-id $SUBNET_ID2 --map-public-ip-on-launc
 SG_ID=$(aws ec2 create-security-group --group-name "JMeter" --description "JMeter Security Group" --vpc-id $VPC_ID --output text | tr -d '\n')
 echo "Created Security Group $SG_ID"
 
-JMETER_IP_PERMISSIONS='[{"IpProtocol": "tcp", "FromPort": 22, "ToPort": 22, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "tcp", "FromPort": 1099, "ToPort": 1099, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "udp", "FromPort": 4445, "ToPort": 4445, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "tcp", "FromPort": 50000, "ToPort": 50000, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "tcp", "FromPort": 51000, "ToPort": 51000, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}]'
+JMETER_IP_PERMISSIONS='[{"IpProtocol": "tcp", "FromPort": 22, "ToPort": 22, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "tcp", "FromPort": 1099, "ToPort": 1099, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "udp", "FromPort": 4445, "ToPort": 4445, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "tcp", "FromPort": 50000, "ToPort": 50000, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "tcp", "FromPort": 51000, "ToPort": 51999, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}]'
 aws ec2 authorize-security-group-ingress --group-id $SG_ID --ip-permissions "$JMETER_IP_PERMISSIONS"
 
 # tag all created resources
