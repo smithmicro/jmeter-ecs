@@ -20,6 +20,9 @@ fi
 if [ "$OWNER" == '' ]; then
   OWNER=jmeter-ecs
 fi
+if [ "$AWS_REGION" == '' ]; then
+  AWS_REGION=$(aws configure get region)
+fi
 
 # keep the tags consistant so we can easily detect if a JMeter VPC already exists
 VPC_TAGS="Key=Name,Value=JMeter-VPC Key=Owner,Value=$OWNER Key=Stack,Value=JMeter"
@@ -43,10 +46,10 @@ echo "Created VPC $VPC_ID"
 # enable DNS hostnames
 aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames --output text
 
-# create a 2 subnets
-SUBNET_ID1=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block $SUBNET_CIDR_BLOCK1 \
+# create 2 subnets
+SUBNET_ID1=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block $SUBNET_CIDR_BLOCK1 --availability-zone "$AWS_REGION"a \
     --query 'Subnet.[SubnetId]' --output text | tr -d '\n')
-SUBNET_ID2=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block $SUBNET_CIDR_BLOCK2 \
+SUBNET_ID2=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block $SUBNET_CIDR_BLOCK2 --availability-zone "$AWS_REGION"b \
     --query 'Subnet.[SubnetId]' --output text | tr -d '\n')
 echo "Created Subnets $SUBNET_ID1,$SUBNET_ID2"
 
@@ -78,7 +81,7 @@ aws ec2 modify-subnet-attribute --subnet-id $SUBNET_ID2 --map-public-ip-on-launc
 SG_ID=$(aws ec2 create-security-group --group-name "JMeter" --description "JMeter Security Group" --vpc-id $VPC_ID --output text | tr -d '\n')
 echo "Created Security Group $SG_ID"
 
-JMETER_IP_PERMISSIONS='[{"IpProtocol": "tcp", "FromPort": 22, "ToPort": 22, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "tcp", "FromPort": 1099, "ToPort": 1099, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "udp", "FromPort": 4445, "ToPort": 4445, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "tcp", "FromPort": 50000, "ToPort": 50000, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "tcp", "FromPort": 51000, "ToPort": 51000, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}]'
+JMETER_IP_PERMISSIONS='[{"IpProtocol": "tcp", "FromPort": 22, "ToPort": 22, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "tcp", "FromPort": 1099, "ToPort": 1099, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "udp", "FromPort": 4445, "ToPort": 4445, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "tcp", "FromPort": 50000, "ToPort": 50000, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},{"IpProtocol": "tcp", "FromPort": 51000, "ToPort": 51999, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}]'
 aws ec2 authorize-security-group-ingress --group-id $SG_ID --ip-permissions "$JMETER_IP_PERMISSIONS"
 
 # tag all created resources
