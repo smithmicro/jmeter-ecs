@@ -138,21 +138,36 @@ else
   # uncomment if you want to pause Lucy to inspect Gru or a Minion
   #read -p "Press enter to start Gru setup: "
 
-  # Step 6 - Run Gru with the specified JMX
-  echo "Copying $INPUT_JMX to Gru"
-  scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $INPUT_JMX ec2-user@${GRU_HOST}:/tmp
+  # Step 6 - Copy all files to Minions/Gru, or just the JMX
+  if [ "$COPY_DIR" == '' ]; then
+    echo "Copying $INPUT_JMX to Gru"
+    scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $INPUT_JMX ec2-user@${GRU_HOST}:/tmp
+  else
+    # Get the public hosts (space delimited) so Lucy can reach them for scp.
+    PUBLIC_MINION_HOSTS=$(aws ec2 describe-instances --instance-ids $MINION_INSTANCE_IDS \
+          --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text | tr '\n' ' ')
+    JMX_DIR=$(dirname $INPUT_JMX)
 
+    for MINION_HOST in $PUBLIC_MINION_HOSTS; do
+      echo "Copying $INPUT_JMX and test files to Minion $MINION_HOST"
+      scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $JMX_DIR/* ec2-user@${MINION_HOST}:/tmp
+    done
+    echo "Copying $INPUT_JMX and test files to Gru $GRU_HOST"
+    scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $JMX_DIR/* ec2-user@${GRU_HOST}:/tmp
+  fi
+
+  # Step 7 - Run Gru with the specified JMX
   echo "Running Docker to start JMeter in Gru mode"
   JMX_IN_COMTAINER=/plans/$(basename $INPUT_JMX)
   ssh -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST} \
   "docker run --network host -v /tmp:/plans -v /logs:/logs --env MINION_HOSTS=$MINION_HOSTS --env JMETER_FLAGS=$JMETER_FLAGS smithmicro/jmeter:$JMETER_VERSION $JMX_IN_COMTAINER"
 
-  # Step 6 - Fetch the results from Gru
+  # Step 8 - Fetch the results from Gru
   echo "Copying results from Gru"
   scp -r -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST}:/logs/* /logs
 fi
 
-# Step 7 - Delete the cluster
+# Step 9 - Delete the cluster
 if [ "$RETAIN_CLUSTER" == '' ]; then
   echo "Deleting cluster/$CLUSTER_NAME"
   ecs-cli down --cluster $CLUSTER_NAME --force
