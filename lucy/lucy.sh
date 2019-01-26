@@ -143,17 +143,15 @@ else
     echo "Copying $INPUT_JMX to Gru"
     scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $INPUT_JMX ec2-user@${GRU_HOST}:/tmp
   else
-    # Get the public hosts (space delimited) so Lucy can reach them for scp.
-    PUBLIC_MINION_HOSTS=$(aws ec2 describe-instances --instance-ids $MINION_INSTANCE_IDS \
+    # Get Gru and Minion public hosts (space delimited) so Lucy can reach them for scp.
+    PUBLIC_HOSTS=$(aws ec2 describe-instances --instance-ids $GRU_INSTANCE_ID $MINION_INSTANCE_IDS \
           --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text | tr '\n' ' ')
     JMX_DIR=$(dirname $INPUT_JMX)
 
-    for MINION_HOST in $PUBLIC_MINION_HOSTS; do
-      echo "Copying $INPUT_JMX and test files to Minion $MINION_HOST"
-      scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $JMX_DIR/* ec2-user@${MINION_HOST}:/tmp
+    for HOST in $PUBLIC_HOSTS; do
+      echo "Copying $INPUT_JMX and test files to $HOST"
+      scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $JMX_DIR/* ec2-user@${HOST}:/tmp
     done
-    echo "Copying $INPUT_JMX and test files to Gru $GRU_HOST"
-    scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $JMX_DIR/* ec2-user@${GRU_HOST}:/tmp
   fi
 
   # Step 7 - Run Gru with the specified JMX
