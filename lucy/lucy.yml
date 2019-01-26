@@ -9,5 +9,6 @@ services:
       - 50000:50000
     volumes:
       - /logs:/logs
+      - /tmp:/plans
     environment:
       - CUSTOM_PLUGIN_URL=

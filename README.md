@@ -79,9 +79,10 @@ This Docker image replaces the JMeter master/slave nomenclature with *Gru*, *Min
 * Step 3 - Run a Minion Task with the requested instance count
 * Step 4 - Get Gru and Minion's instance ID's
 * Step 5 - Get IP addresses from Gru and Minions
-* Step 6 - Run Gru with the specified JMX
-* Step 7 - Fetch the results from Gru
-* Step 8 - Delete the cluster
+* Step 6 - Copy all files to Minions/Gru, or just the JMX
+* Step 7 - Run Gru with the specified JMX
+* Step 8 - Fetch the results from Gru
+* Step 9 - Delete the cluster
 
 ### Volumes
 The `lucy` container uses 3 volumes:
@@ -112,6 +113,7 @@ The following required and optional environment variables are supported:
 |JMETER_FLAGS||None|Custom JMeter command line options.  For example, passing `-X` will tell the Minion to exit at the end of the test|
 |RETAIN_CLUSTER||None|Set to `true` if you want to re-use your cluster for future tests.  Warning, you will incur AWS charges if you leave your cluster running.|
 |CUSTOM_PLUGIN_URL||None|The URL of a custom plugin you want to install in the Minions.  File will be copied to $JMETER_HOME/lib/ext.||
+|COPY_DIR||None|Set to `true` if you want to copy the directory in which the .jmx file is located to all Minions and Gru.  The files will be located in all Docker containers in ` /plans`.  Update your JMX file to reference external files at `/plans/...`|
 
 ## Notes
 All current JMeter Plugins are installed via the Plugins Manager.
