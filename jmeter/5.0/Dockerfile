@@ -2,16 +2,15 @@ FROM openjdk:8-alpine
 
 LABEL maintainer="David Sperling <dsperling@smithmicro.com>"
 
-ENV JMETER_VERSION apache-jmeter-3.0
+ENV JMETER_VERSION apache-jmeter-5.0
 ENV JMETER_HOME /opt/$JMETER_VERSION
 ENV PATH $PATH:$JMETER_HOME/bin
 ENV CMDRUNNER_VERSION 2.2
-ENV PLUGINMGR_VERSION 1.3
+ENV PLUGINMGR_VERSION 1.4
 
 # overridable environment variables
 ENV RESULTS_LOG results.jtl
 ENV JMETER_FLAGS=
-ENV JMETER_MEMORY -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap
 ENV CUSTOM_PLUGIN_URL=
 
 # Install the required tools for JMeter
