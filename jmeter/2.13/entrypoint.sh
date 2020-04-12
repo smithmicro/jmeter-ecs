@@ -47,7 +47,7 @@ if [ "$1" = 'minion' ]; then
     echo "Using Minion AWS Public HOSTNAME $HOSTNAME"
   fi
   # run jmeter in server (minion) mode
-  exec jmeter-server -n \
+  exec jmeter-server -n $JMETER_FLAGS \
     -Dserver.rmi.localport=50000 \
     -Djava.rmi.server.hostname=${HOSTNAME}
 

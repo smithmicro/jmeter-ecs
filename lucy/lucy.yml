@@ -11,4 +11,5 @@ services:
       - /logs:/logs
       - /tmp:/plans
     environment:
+      - JMETER_FLAGS=
       - CUSTOM_PLUGIN_URL=

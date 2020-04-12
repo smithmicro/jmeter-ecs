@@ -11,19 +11,15 @@ services:
     volumes:
       - ../plans:/plans
       - ./logs:/logs
-    command: "/plans/demo.jmx"
+    command: "/plans/TestCert.jmx"
     links: 
       - minion1
-      - minion2
-      - minion3
     environment: 
-      - MINION_HOSTS=minion1,minion2,minion3
+      - MINION_HOSTS=minion1
       - JMETER_FLAGS=-X
     ports:
       - "4445:4445/udp"
   minion1:
     image: smithmicro/jmeter:latest
-  minion2:
-    image: smithmicro/jmeter:latest
-  minion3:
-    image: smithmicro/jmeter:latest
+    environment: 
+      - JMETER_FLAGS=-Djavax.net.ssl.keyStore=/plans/test.p12
