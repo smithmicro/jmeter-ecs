@@ -63,7 +63,7 @@ if [ "$1" = 'minion' ]; then
   fi
 
   # run jmeter in server (minion) mode
-  exec jmeter-server -n \
+  exec jmeter-server -n $JMETER_FLAGS \
     -Dserver.rmi.localport=50000 \
     -Djava.rmi.server.hostname=${HOSTNAME}
 

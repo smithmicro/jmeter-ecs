@@ -3,3 +3,4 @@ logs/
 *.jmx
 test/
 *.xcworkspace/
+*.p12
