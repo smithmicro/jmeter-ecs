@@ -84,6 +84,18 @@ else
   echo "Creating cluster/$CLUSTER_NAME"
   ecs-cli up --cluster $CLUSTER_NAME --size $INSTANCE_COUNT --capability-iam --instance-type $INSTANCE_TYPE --keypair $KEY_NAME \
     --security-group $SECURITY_GROUP --vpc $VPC_ID --subnets $SUBNET_ID --force --verbose
+  CHECKUP=$?
+  if [ ! $CHECKUP -eq 0 ]
+  then
+    echo "Cluster/instances creation command wasn't successful. See above for details."
+    FINDCLUSTER=$(aws ecs list-clusters --query "clusterArns[?ends_with(@, 'cluster/JMeter')]" --output text)
+    if [ ! -z "$FINDCLUSTER" -a -z "$RETAIN_CLUSTER" ]
+    then
+      echo "Deleting cluster/$CLUSTER_NAME"
+      ecs-cli down --cluster $CLUSTER_NAME --force
+    fi
+    exit $CHECKUP
+  fi
 fi
 
 # Step 2 - Wait for the cluster to have all container instances registered
