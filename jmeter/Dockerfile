@@ -9,7 +9,6 @@ ENV CMDRUNNER_VERSION=2.3
 ENV PLUGINMGR_VERSION=1.8
 
 # overridable environment variables
-ENV RESULTS_LOG=results.jtl
 ENV JMETER_FLAGS=""
 ENV CUSTOM_PLUGIN_URL=""
 
