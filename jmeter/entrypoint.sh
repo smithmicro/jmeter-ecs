@@ -31,7 +31,6 @@ if [ ${1##*.} = 'jmx' ]; then
   # remove setting JAVA heap
   sed -i 's/-Xms1g -Xmx1g -XX:MaxMetaspaceSize=256m//' $JMETER_HOME/bin/jmeter
 
-  # run jmeter in client (gru) mode
   # run jmeter in client (gru) mode for all testplans
   TEMP_INPUT_JMX=$1,
   TEMP_MINION_COUNT=$MINION_COUNT,
