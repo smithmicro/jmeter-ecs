@@ -1,17 +1,17 @@
-FROM eclipse-temurin:18-alpine
+FROM openjdk:8-alpine
 
 LABEL maintainer="David Sperling <dsperling@smithmicro.com>"
 
-ENV JMETER_VERSION=apache-jmeter-5.5
-ENV JMETER_HOME=/opt/$JMETER_VERSION
-ENV PATH=$PATH:$JMETER_HOME/bin
-ENV CMDRUNNER_VERSION=2.3
-ENV PLUGINMGR_VERSION=1.8
+ENV JMETER_VERSION apache-jmeter-5.2
+ENV JMETER_HOME /opt/$JMETER_VERSION
+ENV PATH $PATH:$JMETER_HOME/bin
+ENV CMDRUNNER_VERSION 2.2
+ENV PLUGINMGR_VERSION 1.3
 
 # overridable environment variables
-ENV RESULTS_LOG=results.jtl
-ENV JMETER_FLAGS=""
-ENV CUSTOM_PLUGIN_URL=""
+ENV RESULTS_LOG results.jtl
+ENV JMETER_FLAGS=
+ENV CUSTOM_PLUGIN_URL=
 
 # Install the required tools for JMeter
 RUN apk add --update --no-cache \
@@ -31,9 +31,8 @@ RUN curl -O https://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz 
   && curl -OL4 http://search.maven.org/remotecontent?filepath=kg/apc/jmeter-plugins-manager/$PLUGINMGR_VERSION/jmeter-plugins-manager-$PLUGINMGR_VERSION.jar \
   && java -cp jmeter-plugins-manager-$PLUGINMGR_VERSION.jar org.jmeterplugins.repository.PluginManagerCMDInstaller
 
-# install all available plugins except for those that are deprecated, not compatible or under licence
-RUN PluginsManagerCMD.sh install-all-except \
-  jpgc-oauth,schema-assertion,ulp-jmeter-autocorrelator-plugin,ulp-jmeter-gwt-plugin,ulp-jmeter-videostreaming-plugin,di-kafkameter,tilln-iso8583,jmeter.backendlistener.elasticsearch,jmeter-grpc-request,websocket-sampler \
+# install all available plugins except for those that are deprecated
+RUN PluginsManagerCMD.sh install-all-except jpgc-hadoop,jpgc-oauth \
   && sleep 2 \
   && PluginsManagerCMD.sh status
 

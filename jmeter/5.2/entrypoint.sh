@@ -24,9 +24,10 @@ if [ ${1##*.} = 'jmx' ]; then
   # empty the logs directory, or jmeter may fail
   rm -rf /logs/report /logs/*.log /logs/*.jtl
 
-  # remove setting JAVA heap
+  # remove setting JAVA heap and use the RUN_IN_DOCKER variable
   sed -i 's/-Xms1g -Xmx1g -XX:MaxMetaspaceSize=256m//' $JMETER_HOME/bin/jmeter
-
+  sed -i 's/# RUN_IN_DOCKER/RUN_IN_DOCKER/' $JMETER_HOME/bin/jmeter
+  
   # run jmeter in client (gru) mode
   exec jmeter -n $JMETER_FLAGS \
     -R $MINION_HOSTS \
@@ -53,9 +54,10 @@ if [ "$1" = 'minion' ]; then
     echo "Using Minion AWS Public HOSTNAME $HOSTNAME"
   fi
 
-  # remove setting JAVA heap
+  # remove setting JAVA heap and use the RUN_IN_DOCKER variable
   sed -i 's/-Xms1g -Xmx1g -XX:MaxMetaspaceSize=256m//' $JMETER_HOME/bin/jmeter
-
+  sed -i 's/# RUN_IN_DOCKER/RUN_IN_DOCKER/' $JMETER_HOME/bin/jmeter
+  
   # install custom plugin if requested
   if [ "$CUSTOM_PLUGIN_URL" != '' ]; then
     echo "Installing custom plugin $CUSTOM_PLUGIN_URL"
