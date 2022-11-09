@@ -69,10 +69,26 @@ if [ "$VPC_ID" == '' ]; then
   VPC_ID=$(aws ec2 describe-security-groups --group-ids $SECURITY_GROUP --query 'SecurityGroups[*].[VpcId]' --output text)
 fi
 
-# Step 1 - Create our ECS Cluster with MINION_COUNT+1 instances
+# Step 0 - Correct MINION_COUNT to have same number of comma separated values as INPUT_JMX
+COMMAS_FROM_MINION_COUNT="${MINION_COUNT//[^,]}"
+COMMAS_FROM_INPUT_JMX="${INPUT_JMX//[^,]}"
+# shorten MINION_COUNT if it's too long
+while [ ${#COMMAS_FROM_MINION_COUNT} -gt ${#COMMAS_FROM_INPUT_JMX} ]
+do
+  MINION_COUNT=${MINION_COUNT%,*}
+  COMMAS_FROM_MINION_COUNT="${MINION_COUNT//[^,]}"
+done
+# prolong MINION_COUNT by duplicating last value if it's too short
+while [ ${#COMMAS_FROM_MINION_COUNT} -lt ${#COMMAS_FROM_INPUT_JMX} ]
+do
+  MINION_COUNT=$MINION_COUNT,${MINION_COUNT##*,}
+  COMMAS_FROM_MINION_COUNT="${MINION_COUNT//[^,]}"
+done
+
+# Step 1 - Create our ECS Cluster with number of instances base on MINION_COUNT
 ecs-cli --version
 echo "Detecting existing cluster/$CLUSTER_NAME"
-INSTANCE_COUNT=$((MINION_COUNT+1))
+INSTANCE_COUNT=$((${MINION_COUNT//,/+}+1))
 CONTAINER_INSTANCE_COUNT=$(aws ecs describe-clusters --cluster $CLUSTER_NAME \
   --query 'clusters[*].[registeredContainerInstancesCount]' --output text)
 if [ "$CONTAINER_INSTANCE_COUNT" == $INSTANCE_COUNT ]; then
@@ -103,7 +119,7 @@ sed -i 's/JMETER_FLAGS=/JMETER_FLAGS='"$JMETER_FLAGS"'/' /opt/jmeter/lucy.yml
 sed -i 's/950m/'"$MEM_LIMIT"'/' /opt/jmeter/lucy.yml
 sed -i 's/CUSTOM_PLUGIN_URL=/CUSTOM_PLUGIN_URL='"$CUSTOM_PLUGIN_URL"'/' /opt/jmeter/lucy.yml
 ecs-cli compose --file /opt/jmeter/lucy.yml up --cluster $CLUSTER_NAME
-ecs-cli compose --file /opt/jmeter/lucy.yml --cluster $CLUSTER_NAME scale $MINION_COUNT
+ecs-cli compose --file /opt/jmeter/lucy.yml --cluster $CLUSTER_NAME scale $((${MINION_COUNT//,/+}))
 
 # Step 4 - Get Gru and Minion's instance ID's.  Gru is the container with a runningTasksCount = 0
 CONTAINER_INSTANCE_IDS=$(aws ecs list-container-instances --cluster $CLUSTER_NAME --output text |
@@ -140,14 +156,19 @@ else
   #read -p "Press enter to start Gru setup: "
 
   # Step 6 - Copy all files to Minions/Gru, or just the JMX
-  if [ "$COPY_DIR" == '' ]; then
-    echo "Copying $INPUT_JMX to Gru"
-    scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $INPUT_JMX ec2-user@${GRU_HOST}:/tmp
-  else
+  echo "Copying $INPUT_JMX to Gru"
+  TEMP_INPUT_JMX=$INPUT_JMX,
+  while [ "$TEMP_INPUT_JMX" ]
+  do
+    scp -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${TEMP_INPUT_JMX%%,*} ec2-user@${GRU_HOST}:/tmp
+    TEMP_INPUT_JMX=${TEMP_INPUT_JMX#*,}
+  done
+  if [ "$COPY_DIR" != '' ]; then
     # Get Gru and Minion public hosts (space delimited) so Lucy can reach them for scp.
     PUBLIC_HOSTS=$(aws ec2 describe-instances --instance-ids $GRU_INSTANCE_ID $MINION_INSTANCE_IDS \
           --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text | tr '\n' ' ')
-    JMX_DIR=$(dirname $INPUT_JMX)
+    TEMP_INPUT_JMX=$INPUT_JMX,
+    JMX_DIR=$(dirname ${TEMP_INPUT_JMX%%,*})
 
     for HOST in $PUBLIC_HOSTS; do
       echo "Copying $INPUT_JMX and test files to $HOST"
@@ -157,9 +178,18 @@ else
 
   # Step 7 - Run Gru with the specified JMX
   echo "Running Docker to start JMeter in Gru mode"
-  JMX_IN_COMTAINER=/plans/$(basename $INPUT_JMX)
+  TEMP_INPUT_JMX=$INPUT_JMX,
+  JMX_IN_COMTAINER=
+  while [ "$TEMP_INPUT_JMX" ]
+  do
+    JMX_IN_COMTAINER=$JMX_IN_COMTAINER,/plans/$(basename ${TEMP_INPUT_JMX%%,*})
+    TEMP_INPUT_JMX=${TEMP_INPUT_JMX#*,}
+  done
+  JMX_IN_COMTAINER=${JMX_IN_COMTAINER#,}
+
   ssh -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST} \
-  "docker run --network host -v /tmp:/plans -v /logs:/logs --env MINION_HOSTS=$MINION_HOSTS --env JMETER_FLAGS=$JMETER_FLAGS smithmicro/jmeter:$JMETER_VERSION $JMX_IN_COMTAINER"
+  "docker run --network host -v /tmp:/plans -v /logs:/logs --env MINION_HOSTS=$MINION_HOSTS --env MINION_COUNT=$MINION_COUNT \
+  --env JMETER_FLAGS=$JMETER_FLAGS smithmicro/jmeter:$JMETER_VERSION $JMX_IN_COMTAINER"
 
   # Step 8 - Fetch the results from Gru
   echo "Copying results from Gru"

@@ -23,7 +23,7 @@ Prerequisites to use this image:
 
 Docker run template:
 ```
-docker run -v <oath to jmx>:/plans -v <path to pem>:/keys -v <path to logs>:/logs \
+docker run -v <path to jmx>:/plans -v <path to pem>:/keys -v <path to logs>:/logs \
     --env AWS_ACCESS_KEY_ID=<key id> \
     --env AWS_SECRET_ACCESS_KEY=<access key> \
     --env AWS_DEFAULT_REGION=<region> \
@@ -44,6 +44,19 @@ docker run -v $PWD/plans:/plans -v $PWD/keys:/keys -v $PWD/logs:/logs \
     --env KEY_NAME=jmeter-key \
     --env MINION_COUNT=5 \
     smithmicro/lucy /plans/demo.jmx
+```
+*Since 5.5:*
+Run two .jmx test plans in parallel, 1st using 4 minions, 2nd and following using 2 minions:
+```
+docker run -v $PWD/plans:/plans -v $PWD/keys:/keys -v $PWD/logs:/logs \
+    --env AWS_ACCESS_KEY_ID=ABCDEFGHIJKLMNOPQRST \
+    --env AWS_SECRET_ACCESS_KEY=abcdefghijklmnopqrstuvwxyz0123456789ABCDEF \
+    --env AWS_DEFAULT_REGION=us-east-1 \
+    --env SECURITY_GROUP=sg-12345678 \
+    --env SUBNET_ID=subnet-12345678,subnet-87654321 \
+    --env KEY_NAME=jmeter-key \
+    --env MINION_COUNT=4,2 \
+    smithmicro/lucy /plans/TestOne.jmx,/plans/TestTwo.jmx,/plans/TestThree.jmx
 ```
 
 ## Architecture
@@ -98,22 +111,22 @@ The following required and optional environment variables are supported:
 |AWS_DEFAULT_REGION|Yes|None|AWS Region (e.g. `us-east-1`)|
 |AWS_ACCESS_KEY_ID|Yes|None|AWS Access Key|
 |AWS_SECRET_ACCESS_KEY|Yes|None|AWS Secret Key|
-|INPUT_JMX|Yes|None|File path of JMeter Test file to run (.jmx).  You can optionally specify this as the first command line option of `docker run`|
+|INPUT_JMX|Yes|None|File path of JMeter Test file to run (.jmx).  You can optionally specify this as the first command line option of `docker run`.<br>*Since 5.5:* Comma separated list of .jmx files|
 |KEY_NAME|Yes|None|AWS Security Key Pair .pem file (do not specify the .pem extension)|
 |SECURITY_GROUP|Yes|None|AWS Secuirty group that allows ports 22,1099,50000,51000/tcp and 4445/udp from all ports (e.g. sg-12345678)|
 |SUBNET_ID|Yes|None|One or more Subnets (comma separated) that are assigned to your VPC|
-|VPC_ID||VPC assigned to SUBNET_ID|We dautomatically erive this from your SUBNET_ID|
+|VPC_ID||VPC assigned to SUBNET_ID|We automatically derive this from your SUBNET_ID|
 |JMETER_VERSION||latest|smithmicro/jmeter Image tag.  See Docker Hub for [available versions](https://hub.docker.com/r/smithmicro/jmeter/tags/).|
 |INSTANCE_TYPE||t2.micro|To double your memory, pass `t2.small`|
 |MEM_LIMIT||950m|If you are using t2.small, set MEM_LIMIT to `1995m`|
-|MINION_COUNT||2||
+|MINION_COUNT||2|*Since 5.5:* Comma separated list of minion counts for each .jmx specified in INPUT_JMX in its order. If MINION_COUNT list is shorter than INPUT_JMX, last value of MINION_COUNT will be used for remaining .jmx test plans from INPUT_JMX.|
 |PEM_PATH||/keys|This must match your Volume map.  See Volume section above.|
 |CLUSTER_NAME||JMeter|Name that appears in your AWS Cluster UI|
-|GRU_PRIVATE_IP||None|Set to `true` if you would like to run Lucy within AWS.  See GitHub [Issue 8](https://github.com/smithmicro/jmeter-ecs/issues/8) for details.|
+|GRU_PRIVATE_IP||None|Set to non-empty string if you would like to run Lucy within AWS.  See GitHub [Issue 8](https://github.com/smithmicro/jmeter-ecs/issues/8) for details.|
 |JMETER_FLAGS||None|Custom JMeter command line options.  For example, passing `-X` will tell the Minion to exit at the end of the test|
-|RETAIN_CLUSTER||None|Set to `true` if you want to re-use your cluster for future tests.  Warning, you will incur AWS charges if you leave your cluster running.|
+|RETAIN_CLUSTER||None|Set to non-empty string if you want to re-use your cluster for future tests.  Warning, you will incur AWS charges if you leave your cluster running.|
 |CUSTOM_PLUGIN_URL||None|The URL of a custom plugin you want to install in the Minions.  File will be copied to $JMETER_HOME/lib/ext.||
-|COPY_DIR||None|Set to `true` if you want to copy the directory in which the .jmx file is located to all Minions and Gru.  The files will be located in all Docker containers in ` /plans`.  Update your JMX file to reference external files at `/plans/...`|
+|COPY_DIR||None|Set to non-empty string if you want to copy the directory in which the .jmx file is located to all Minions and Gru.  The files will be located in all Docker containers in ` /plans`.  Update your JMX file to reference external files at `/plans/...`. <br>*Since 5.5:* Directory from the first .jmx will be used.|
 
 ## Notes
 All current JMeter Plugins are installed via the Plugins Manager.
