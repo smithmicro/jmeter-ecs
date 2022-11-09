@@ -189,7 +189,7 @@ else
 
   ssh -i $PEM_PATH/$KEY_NAME.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${GRU_HOST} \
   "docker run --network host -v /tmp:/plans -v /logs:/logs --env MINION_HOSTS=$MINION_HOSTS --env MINION_COUNT=$MINION_COUNT \
-  --env JMETER_FLAGS=$JMETER_FLAGS mprikryl/jmeter:$JMETER_VERSION $JMX_IN_COMTAINER"
+  --env JMETER_FLAGS=$JMETER_FLAGS smithmicro/jmeter:$JMETER_VERSION $JMX_IN_COMTAINER"
 
   # Step 8 - Fetch the results from Gru
   echo "Copying results from Gru"
