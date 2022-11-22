@@ -24,18 +24,10 @@ if [ ${1##*.} = 'jmx' ]; then
   # empty the logs directory, or jmeter may fail
   rm -rf /logs/report /logs/*.log /logs/*.jtl
 
-  # remove setting JAVA heap
+  # remove setting JAVA heap and use the RUN_IN_DOCKER variable
   sed -i 's/-Xms1g -Xmx1g -XX:MaxMetaspaceSize=256m//' $JMETER_HOME/bin/jmeter
-
-  # limit thread duration in .jmx if TIME_LIMIT is positive number
-  if [ "${TIME_LIMIT}" -gt "0" ] 2> /dev/null
-  then
-    xml ed --inplace \
-    --update "//boolProp[@name='ThreadGroup.scheduler']" --value true \
-    --update "//stringProp[@name='ThreadGroup.duration' and (.='' or .<${TIME_LIMIT})]" --value $TIME_LIMIT \
-    $1
-  fi
-
+  sed -i 's/# RUN_IN_DOCKER/RUN_IN_DOCKER/' $JMETER_HOME/bin/jmeter
+  
   # run jmeter in client (gru) mode
   exec jmeter -n $JMETER_FLAGS \
     -R $MINION_HOSTS \
@@ -62,9 +54,10 @@ if [ "$1" = 'minion' ]; then
     echo "Using Minion AWS Public HOSTNAME $HOSTNAME"
   fi
 
-  # remove setting JAVA heap
+  # remove setting JAVA heap and use the RUN_IN_DOCKER variable
   sed -i 's/-Xms1g -Xmx1g -XX:MaxMetaspaceSize=256m//' $JMETER_HOME/bin/jmeter
-
+  sed -i 's/# RUN_IN_DOCKER/RUN_IN_DOCKER/' $JMETER_HOME/bin/jmeter
+  
   # install custom plugin if requested
   if [ "$CUSTOM_PLUGIN_URL" != '' ]; then
     echo "Installing custom plugin $CUSTOM_PLUGIN_URL"

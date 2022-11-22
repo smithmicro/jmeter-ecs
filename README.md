@@ -114,6 +114,7 @@ The following required and optional environment variables are supported:
 |RETAIN_CLUSTER||None|Set to `true` if you want to re-use your cluster for future tests.  Warning, you will incur AWS charges if you leave your cluster running.|
 |CUSTOM_PLUGIN_URL||None|The URL of a custom plugin you want to install in the Minions.  File will be copied to $JMETER_HOME/lib/ext.||
 |COPY_DIR||None|Set to `true` if you want to copy the directory in which the .jmx file is located to all Minions and Gru.  The files will be located in all Docker containers in ` /plans`.  Update your JMX file to reference external files at `/plans/...`|
+|TIME_LIMIT||None|*Since 5.5:* Limits Thread lifetime of Thread Group. Value is in seconds.|
 
 ## Notes
 All current JMeter Plugins are installed via the Plugins Manager.
