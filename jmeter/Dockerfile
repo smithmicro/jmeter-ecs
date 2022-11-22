@@ -16,7 +16,8 @@ ENV CUSTOM_PLUGIN_URL=""
 # Install the required tools for JMeter
 RUN apk add --update --no-cache \
     curl \
-    openssh-client
+    openssh-client \
+    xmlstarlet
 
 WORKDIR /opt
 
@@ -33,7 +34,7 @@ RUN curl -O https://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz 
 
 # install all available plugins except for those that are deprecated, not compatible or under licence
 RUN PluginsManagerCMD.sh install-all-except \
-  jpgc-oauth,schema-assertion,ulp-jmeter-autocorrelator-plugin,ulp-jmeter-gwt-plugin,ulp-jmeter-videostreaming-plugin,di-kafkameter,tilln-iso8583,jmeter.backendlistener.elasticsearch,jmeter-grpc-request,websocket-sampler \
+  jpgc-hadoop,jpgc-oauth,schema-assertion,ulp-jmeter-autocorrelator-plugin,ulp-jmeter-gwt-plugin,ulp-jmeter-videostreaming-plugin,di-kafkameter,tilln-iso8583,jmeter.backendlistener.elasticsearch,jmeter-grpc-request,websocket-sampler,jpgc-graphs-vs \
   && sleep 2 \
   && PluginsManagerCMD.sh status
 
